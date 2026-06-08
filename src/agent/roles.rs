@@ -1,0 +1,1 @@
+// Agent roles (SCREENER, MANAGER, GENERAL) placeholder

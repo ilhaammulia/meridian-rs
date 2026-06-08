@@ -1,0 +1,26 @@
+# Build
+/target
+**/*.rs.bk
+Cargo.lock
+
+# Config (sensitive)
+user-config.json
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Reference (original JS code)
+reference/

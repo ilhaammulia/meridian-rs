@@ -29,16 +29,35 @@ pub fn build_system_prompt(
 ) -> String {
     match role {
         AgentRole::Manager => build_manager_prompt(config, portfolio_json, lessons),
-        AgentRole::Screener => build_screener_prompt(config, portfolio_json, positions_json, state_summary, lessons),
-        AgentRole::General => build_general_prompt(config, portfolio_json, positions_json, state_summary, lessons),
+        AgentRole::Screener => build_screener_prompt(
+            config,
+            portfolio_json,
+            positions_json,
+            state_summary,
+            lessons,
+        ),
+        AgentRole::General => build_general_prompt(
+            config,
+            portfolio_json,
+            positions_json,
+            state_summary,
+            lessons,
+        ),
     }
 }
 
 fn build_manager_prompt(config: &Config, portfolio: &str, lessons: &str) -> String {
     let mgmt_json = serde_json::to_string(&config.management).unwrap_or_default();
-    let lessons_section = if lessons.is_empty() { String::new() } else { format!("LESSONS LEARNED:
+    let lessons_section = if lessons.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "LESSONS LEARNED:
 {}
-", lessons) };
+",
+            lessons
+        )
+    };
     let ts = now_iso();
 
     format!(
@@ -59,15 +78,28 @@ Management Config: {}
     )
 }
 
-fn build_screener_prompt(config: &Config, portfolio: &str, positions: &str, state: &str, lessons: &str) -> String {
+fn build_screener_prompt(
+    config: &Config,
+    portfolio: &str,
+    positions: &str,
+    state: &str,
+    lessons: &str,
+) -> String {
     let min_fees = config.screening.min_token_fees_sol;
     let max_bot = config.screening.max_bot_holders_pct;
     let min_bins = config.strategy.min_bins_below;
     let max_bins = config.strategy.max_bins_below;
     let tf = &config.screening.timeframe;
-    let _lessons_section = if lessons.is_empty() { String::new() } else { format!("LESSONS LEARNED:
+    let _lessons_section = if lessons.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "LESSONS LEARNED:
 {}
-", lessons) };
+",
+            lessons
+        )
+    };
     let ts = now_iso();
 
     format!(
@@ -101,14 +133,28 @@ State: {state}
     )
 }
 
-fn build_general_prompt(config: &Config, portfolio: &str, positions: &str, state: &str, lessons: &str) -> String {
+fn build_general_prompt(
+    config: &Config,
+    portfolio: &str,
+    positions: &str,
+    state: &str,
+    lessons: &str,
+) -> String {
     let config_json = serde_json::to_string(&serde_json::json!({
         "screening": config.screening,
         "management": config.management,
-    })).unwrap_or_default();
-    let _lessons_section = if lessons.is_empty() { String::new() } else { format!("LESSONS LEARNED:
+    }))
+    .unwrap_or_default();
+    let _lessons_section = if lessons.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "LESSONS LEARNED:
 {}
-", lessons) };
+",
+            lessons
+        )
+    };
     let ts = now_iso();
 
     format!(

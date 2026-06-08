@@ -1,9 +1,9 @@
+use anyhow::Result;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use anyhow::Result;
-use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PoolEntry {
@@ -52,44 +52,63 @@ impl PoolMemoryStore {
         self.pools.get(pool_address)
     }
 
-    pub fn add_note(&mut self, pool_address: &str, base_mint: &str, symbol: Option<&str>, content: &str) {
-        let entry = self.pools.entry(pool_address.to_string()).or_insert_with(|| PoolEntry {
-            pool_address: pool_address.to_string(),
-            base_mint: base_mint.to_string(),
-            symbol: symbol.map(String::from),
-            notes: vec![],
-            last_yield: None,
-            last_close_reason: None,
-            last_close_pnl: None,
-            last_close_at: None,
-            total_positions: 0,
-            total_fees_earned: 0.0,
-            on_cooldown: false,
-            cooldown_until: None,
-            cooldown_reason: None,
-        });
+    pub fn add_note(
+        &mut self,
+        pool_address: &str,
+        base_mint: &str,
+        symbol: Option<&str>,
+        content: &str,
+    ) {
+        let entry = self
+            .pools
+            .entry(pool_address.to_string())
+            .or_insert_with(|| PoolEntry {
+                pool_address: pool_address.to_string(),
+                base_mint: base_mint.to_string(),
+                symbol: symbol.map(String::from),
+                notes: vec![],
+                last_yield: None,
+                last_close_reason: None,
+                last_close_pnl: None,
+                last_close_at: None,
+                total_positions: 0,
+                total_fees_earned: 0.0,
+                on_cooldown: false,
+                cooldown_until: None,
+                cooldown_reason: None,
+            });
         entry.notes.push(PoolNote {
             content: content.to_string(),
             created_at: Utc::now().to_rfc3339(),
         });
     }
 
-    pub fn record_close(&mut self, pool_address: &str, base_mint: &str, symbol: Option<&str>, reason: &str, pnl: f64) {
-        let entry = self.pools.entry(pool_address.to_string()).or_insert_with(|| PoolEntry {
-            pool_address: pool_address.to_string(),
-            base_mint: base_mint.to_string(),
-            symbol: symbol.map(String::from),
-            notes: vec![],
-            last_yield: None,
-            last_close_reason: None,
-            last_close_pnl: None,
-            last_close_at: None,
-            total_positions: 0,
-            total_fees_earned: 0.0,
-            on_cooldown: false,
-            cooldown_until: None,
-            cooldown_reason: None,
-        });
+    pub fn record_close(
+        &mut self,
+        pool_address: &str,
+        base_mint: &str,
+        symbol: Option<&str>,
+        reason: &str,
+        pnl: f64,
+    ) {
+        let entry = self
+            .pools
+            .entry(pool_address.to_string())
+            .or_insert_with(|| PoolEntry {
+                pool_address: pool_address.to_string(),
+                base_mint: base_mint.to_string(),
+                symbol: symbol.map(String::from),
+                notes: vec![],
+                last_yield: None,
+                last_close_reason: None,
+                last_close_pnl: None,
+                last_close_at: None,
+                total_positions: 0,
+                total_fees_earned: 0.0,
+                on_cooldown: false,
+                cooldown_until: None,
+                cooldown_reason: None,
+            });
         entry.last_close_reason = Some(reason.to_string());
         entry.last_close_pnl = Some(pnl);
         entry.last_close_at = Some(Utc::now().to_rfc3339());
@@ -97,7 +116,8 @@ impl PoolMemoryStore {
     }
 
     pub fn is_on_cooldown(&self, base_mint: &str) -> bool {
-        self.pools.values()
+        self.pools
+            .values()
             .filter(|p| p.base_mint == base_mint && p.on_cooldown)
             .any(|p| {
                 if let Some(ref until) = p.cooldown_until {
@@ -131,11 +151,14 @@ impl PoolMemoryStore {
     }
 
     pub fn get_summary_for_prompt(&self) -> String {
-        if self.pools.is_empty() { return "No pool history".to_string(); }
+        if self.pools.is_empty() {
+            return "No pool history".to_string();
+        }
         let mut lines = Vec::new();
         for (_, entry) in &self.pools {
             if entry.total_positions > 0 || !entry.notes.is_empty() {
-                let mut line = format!("{}: {} positions, {:.4} SOL fees",
+                let mut line = format!(
+                    "{}: {} positions, {:.4} SOL fees",
                     entry.symbol.as_deref().unwrap_or(&entry.base_mint[..8]),
                     entry.total_positions,
                     entry.total_fees_earned

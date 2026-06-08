@@ -1,7 +1,7 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
-use anyhow::Result;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Lesson {
@@ -44,14 +44,18 @@ impl LessonStore {
         if let Some(l) = self.lessons.iter_mut().find(|l| l.id == id) {
             l.pinned = true;
             true
-        } else { false }
+        } else {
+            false
+        }
     }
 
     pub fn unpin(&mut self, id: &str) -> bool {
         if let Some(l) = self.lessons.iter_mut().find(|l| l.id == id) {
             l.pinned = false;
             true
-        } else { false }
+        } else {
+            false
+        }
     }
 
     pub fn clear(&mut self) {
@@ -59,8 +63,11 @@ impl LessonStore {
     }
 
     pub fn get_for_prompt(&self) -> String {
-        if self.lessons.is_empty() { return String::new(); }
-        self.lessons.iter()
+        if self.lessons.is_empty() {
+            return String::new();
+        }
+        self.lessons
+            .iter()
             .map(|l| format!("- {}{}", if l.pinned { "[PINNED] " } else { "" }, l.content))
             .collect::<Vec<_>>()
             .join("\n")

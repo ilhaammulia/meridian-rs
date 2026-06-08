@@ -1,7 +1,7 @@
-use anyhow::{Result, Context};
-use serde::{Deserialize, Serialize};
-use reqwest::Client;
 use crate::utils::logger::module::warn;
+use anyhow::{Context, Result};
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolDefinition {
@@ -129,7 +129,8 @@ impl LlmClient {
 
         // Retry up to 3 times on transient errors
         for attempt in 0..3 {
-            let resp = self.client
+            let resp = self
+                .client
                 .post(format!("{}/chat/completions", self.base_url))
                 .header("Authorization", format!("Bearer {}", self.api_key))
                 .header("Content-Type", "application/json")
@@ -143,7 +144,15 @@ impl LlmClient {
                 let text = resp.text().await.unwrap_or_default();
                 if status.as_u16() >= 500 || status.as_u16() == 429 {
                     let wait = (attempt + 1) * 3;
-                    warn("llm", &format!("LLM API {} retrying in {}s: {}", status, wait, &text[..text.len().min(100)]));
+                    warn(
+                        "llm",
+                        &format!(
+                            "LLM API {} retrying in {}s: {}",
+                            status,
+                            wait,
+                            &text[..text.len().min(100)]
+                        ),
+                    );
                     tokio::time::sleep(std::time::Duration::from_secs(wait)).await;
                     continue;
                 }
@@ -156,12 +165,18 @@ impl LlmClient {
                     let code = err.code.unwrap_or(0);
                     if code == 502 || code == 503 || code == 529 {
                         let wait = (attempt + 1) * 5;
-                        warn("llm", &format!("LLM provider error {}, retrying in {}s", code, wait));
+                        warn(
+                            "llm",
+                            &format!("LLM provider error {}, retrying in {}s", code, wait),
+                        );
                         tokio::time::sleep(std::time::Duration::from_secs(wait)).await;
                         continue;
                     }
                 }
-                return Err(anyhow::anyhow!("LLM returned no choices: {:?}", chat_resp.error));
+                return Err(anyhow::anyhow!(
+                    "LLM returned no choices: {:?}",
+                    chat_resp.error
+                ));
             }
             return Ok(chat_resp);
         }
@@ -178,8 +193,12 @@ impl LlmClient {
             name: None,
         }];
 
-        let resp = self.chat_with_tools(model, &messages, None, None, 0.7, 4096).await?;
-        Ok(resp.choices.first()
+        let resp = self
+            .chat_with_tools(model, &messages, None, None, 0.7, 4096)
+            .await?;
+        Ok(resp
+            .choices
+            .first()
             .and_then(|c| c.message.content.clone())
             .unwrap_or_else(|| "No response".to_string()))
     }

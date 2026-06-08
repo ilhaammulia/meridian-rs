@@ -15,6 +15,10 @@ pub struct Config {
     pub tokens: TokensConfig,
     #[serde(default)]
     pub api: ApiConfig,
+    #[serde(default)]
+    pub jupiter: JupiterConfig,
+    #[serde(default)]
+    pub indicators: IndicatorsConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,7 +61,7 @@ pub struct ScreeningConfig {
     #[serde(default)]
     pub use_discord_signals: bool,
     #[serde(default)]
-    pub discord_signal_mode: Option<String>,  // "merge" | "only"
+    pub discord_signal_mode: Option<String>,
 }
 
 fn default_min_quote_organic() -> f64 { 0.0 }
@@ -79,10 +83,36 @@ pub struct ManagementConfig {
     pub management_interval_min: u32,
     #[serde(default = "default_screening_interval")]
     pub screening_interval_min: u32,
+    // ── Trailing TP ──────────────────────────────────────────
+    #[serde(default)]
+    pub trailing_take_profit: bool,
+    #[serde(default = "default_trailing_trigger_pct")]
+    pub trailing_trigger_pct: f64,
+    #[serde(default = "default_trailing_drop_pct")]
+    pub trailing_drop_pct: f64,
+    // ── Claim / Yield thresholds ─────────────────────────────
+    #[serde(default = "default_min_claim_amount")]
+    pub min_claim_amount: f64,
+    #[serde(default = "default_min_fee_per_tvl_24h")]
+    pub min_fee_per_tvl_24h: f64,
+    #[serde(default = "default_min_age_before_yield_check")]
+    pub min_age_before_yield_check: u32,
+    // ── Pump / OOR bins ──────────────────────────────────────
+    #[serde(default = "default_out_of_range_bins_to_close")]
+    pub out_of_range_bins_to_close: i32,
+    // ── Display mode ─────────────────────────────────────────
+    #[serde(default)]
+    pub sol_mode: bool,
 }
 
 fn default_management_interval() -> u32 { 10 }
 fn default_screening_interval() -> u32 { 30 }
+fn default_trailing_trigger_pct() -> f64 { 5.0 }
+fn default_trailing_drop_pct() -> f64 { 3.0 }
+fn default_min_claim_amount() -> f64 { 0.01 }
+fn default_min_fee_per_tvl_24h() -> f64 { 0.0005 }
+fn default_min_age_before_yield_check() -> u32 { 60 }
+fn default_out_of_range_bins_to_close() -> i32 { 50 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -105,7 +135,14 @@ fn default_cooldown_duration() -> u32 { 60 }
 pub struct ScheduleConfig {
     pub management_interval_min: u32,
     pub screening_interval_min: u32,
+    #[serde(default = "default_pnl_poll_interval")]
+    pub pnl_poll_interval_secs: u32,
+    #[serde(default = "default_sync_interval")]
+    pub sync_interval_min: u32,
 }
+
+fn default_pnl_poll_interval() -> u32 { 30 }
+fn default_sync_interval() -> u32 { 5 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -152,7 +189,12 @@ pub struct DualStrategyConfig {
 
 impl Default for DualStrategyConfig {
     fn default() -> Self {
-        Self { enabled: false, primary_pct: 0.6, safeguard_oor_wait_min: 60, aggressive_oor_wait_min: 15 }
+        Self {
+            enabled: false,
+            primary_pct: 0.6,
+            safeguard_oor_wait_min: 60,
+            aggressive_oor_wait_min: 15,
+        }
     }
 }
 
@@ -179,6 +221,28 @@ pub struct ApiConfig {
     pub agent_meridian_base: Option<String>,
     #[serde(default)]
     pub agent_meridian_key: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct JupiterConfig {
+    #[serde(default)]
+    pub referral_account: Option<String>,
+    #[serde(default = "default_referral_fee_bps")]
+    pub referral_fee_bps: u32,
+    #[serde(default)]
+    pub api_key: Option<String>,
+}
+
+fn default_referral_fee_bps() -> u32 { 50 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct IndicatorsConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub presets: Vec<String>,
 }
 
 impl Default for Config {
@@ -219,6 +283,14 @@ impl Default for Config {
                 take_profit_pct: None,
                 management_interval_min: 10,
                 screening_interval_min: 30,
+                trailing_take_profit: false,
+                trailing_trigger_pct: 5.0,
+                trailing_drop_pct: 3.0,
+                min_claim_amount: 0.01,
+                min_fee_per_tvl_24h: 0.0005,
+                min_age_before_yield_check: 60,
+                out_of_range_bins_to_close: 50,
+                sol_mode: false,
             },
             risk: RiskConfig {
                 max_deploy_amount: 50.0,
@@ -230,6 +302,8 @@ impl Default for Config {
             schedule: ScheduleConfig {
                 management_interval_min: 10,
                 screening_interval_min: 30,
+                pnl_poll_interval_secs: 30,
+                sync_interval_min: 5,
             },
             llm: LlmConfig {
                 management_model: "openrouter/healer-alpha".to_string(),
@@ -249,6 +323,8 @@ impl Default for Config {
             dual_strategy: DualStrategyConfig::default(),
             tokens: TokensConfig::default(),
             api: ApiConfig::default(),
+            jupiter: JupiterConfig::default(),
+            indicators: IndicatorsConfig::default(),
         }
     }
 }

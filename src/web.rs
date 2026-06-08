@@ -1,9 +1,4 @@
-use axum::{
-    routing::get,
-    Router,
-    response::Html,
-    Json,
-};
+use axum::{response::Html, routing::get, Json, Router};
 use serde_json::json;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -28,7 +23,8 @@ pub async fn start_web_server() -> anyhow::Result<()> {
 }
 
 async fn main_page() -> Html<&'static str> {
-    Html(r#"
+    Html(
+        r#"
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -152,7 +148,8 @@ async fn main_page() -> Html<&'static str> {
     </script>
 </body>
 </html>
-    "#)
+    "#,
+    )
 }
 
 // API

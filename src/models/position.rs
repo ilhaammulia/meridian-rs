@@ -63,14 +63,20 @@ impl PositionState {
     }
 
     pub fn get_active(&self) -> Vec<&TrackedPosition> {
-        self.positions.values()
-            .filter(|p| p.status == PositionStatus::Active || p.status == PositionStatus::OutOfRange)
+        self.positions
+            .values()
+            .filter(|p| {
+                p.status == PositionStatus::Active || p.status == PositionStatus::OutOfRange
+            })
             .collect()
     }
 
     pub fn count_active(&self) -> usize {
-        self.positions.values()
-            .filter(|p| p.status == PositionStatus::Active || p.status == PositionStatus::OutOfRange)
+        self.positions
+            .values()
+            .filter(|p| {
+                p.status == PositionStatus::Active || p.status == PositionStatus::OutOfRange
+            })
             .count()
     }
 

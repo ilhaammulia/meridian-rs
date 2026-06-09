@@ -12,6 +12,7 @@ mod cycle;
 mod lessons;
 mod llm;
 mod models;
+mod ops;
 mod signal_weights;
 mod state;
 mod strategy_library;
@@ -89,6 +90,39 @@ async fn main() -> Result<()> {
     let pool_memory_path = meridian_data_path("pool-memory.json")
         .to_string_lossy()
         .into_owned();
+    let health_port: u16 = std::env::var("HEALTH_PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(8080);
+    let lock_path = std::env::var("MERIDIAN_LOCK_PATH")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| meridian_data_path("meridian.lock"));
+    let _process_guard = ops::ProcessGuard::acquire(&lock_path)?;
+    info(
+        "ops",
+        &format!("Process lock acquired -- {}", lock_path.display()),
+    );
+
+    let startup_env = ops::StartupEnv::from_current();
+    let startup_report = ops::startup_report(&config, &state_path, &startup_env);
+    for check in &startup_report.checks {
+        match check.status {
+            ops::StartupCheckStatus::Ok => info("startup", &check.message),
+            ops::StartupCheckStatus::Warn => warn("startup", &check.message),
+        }
+    }
+    let web_addr =
+        std::env::var("MERIDIAN_WEB_ADDR").unwrap_or_else(|_| "0.0.0.0:3000".to_string());
+    for check in [
+        ops::check_port_available("web_port", &web_addr),
+        ops::check_port_available("health_port", &format!("0.0.0.0:{health_port}")),
+    ] {
+        match check.status {
+            ops::StartupCheckStatus::Ok => info("startup", &check.message),
+            ops::StartupCheckStatus::Warn => warn("startup", &check.message),
+        }
+    }
+
     let positions = PositionState::load(&state_path)?;
     PoolMemoryStore::load(&pool_memory_path)?;
     info(
@@ -414,10 +448,6 @@ async fn main() -> Result<()> {
     });
 
     // ── Health check endpoint (TCP listener) ───────────────────
-    let health_port: u16 = std::env::var("HEALTH_PORT")
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(8080);
     let mut shutdown_health = shutdown_rx.clone();
 
     tokio::spawn(async move {

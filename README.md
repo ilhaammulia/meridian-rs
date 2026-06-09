@@ -92,13 +92,13 @@ Reference target: [`yunus-0x/meridian`](https://github.com/yunus-0x/meridian)
 
 ### Phase 7 — Production operations parity
 
-- [ ] `.env.example` parity with original project
-- [ ] Encrypted env flow or documented alternative
-- [ ] launchd/systemd/PM2-equivalent deployment guide
-- [ ] Startup checks for repo/cwd/config/wallet/API keys
-- [ ] Duplicate process and port conflict guards
-- [ ] Claude Code slash-command compatibility or Rust-native replacement
-- [ ] HiveMind/shared lessons support or documented replacement
+- [x] `.env.example` parity with original project
+- [x] Encrypted env flow or documented alternative
+- [x] launchd/systemd/PM2-equivalent deployment guide
+- [x] Startup checks for repo/cwd/config/wallet/API keys
+- [x] Duplicate process and port conflict guards
+- [x] Claude Code slash-command compatibility or Rust-native replacement
+- [x] HiveMind/shared lessons support or documented replacement
 
 ## Project Structure
 
@@ -156,6 +156,8 @@ Copy `.env.example` to `.env` for local development or to `~/.meridian/.env` for
 The Rust port accepts both the nested Rust config format and the original Node.js Meridian flat `user-config.json` keys. Runtime secrets should live in `.env` or `~/.meridian/.env`; original Meridian env names such as `RPC_URL`, `OPENROUTER_API_KEY`, `LLM_MODEL`, `HELIUS_API_KEY`, `JUPITER_API_KEY`, and Telegram/Agent Meridian keys are mapped into the Rust config at startup.
 
 Agent Meridian / LPAgent mutable relay execution is documented as replaced by native Rust execution for deploy/claim/close/swap paths; read-only LPAgent analytics remain available for top-LPer study. See [`docs/agent-meridian-relay.md`](docs/agent-meridian-relay.md).
+
+Production operations now include trackable env templates, startup checks, duplicate process guards, port conflict checks, encrypted-env alternatives, launchd/systemd/PM2-equivalent deployment examples, Claude Code slash-command replacements, and HiveMind/shared lessons replacement guidance. See [`docs/production-operations.md`](docs/production-operations.md).
 
 Discord signal queue/pre-check parity is Rust-native and data-dir isolated through `discord-signals.json`; see [`docs/discord-signals.md`](docs/discord-signals.md).
 

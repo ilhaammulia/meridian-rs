@@ -4,6 +4,7 @@ use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 
 use crate::config::Config;
+use crate::config::llm_config::LlmCredentials;
 use crate::cycle::{run_management_cycle, run_screening_cycle};
 use crate::lessons::{EvolutionConfig, LessonStore, PerformanceInput};
 use crate::llm::LlmClient;
@@ -1130,10 +1131,11 @@ fn run_strategy_command(action: StrategyAction, state_path: &str) -> Result<CliO
 }
 
 fn llm_client_from_config(config: &Config) -> LlmClient {
-    LlmClient::new(
-        config.llm.api_key.as_deref().unwrap_or(""),
-        &config.llm.base_url,
-    )
+    let creds = LlmCredentials::from_env_or_config(
+        Some(config.llm.base_url.as_str()),
+        config.llm.api_key.as_deref(),
+    );
+    LlmClient::new(&creds.api_key, &creds.base_url)
 }
 
 async fn resolve_wallet_sol(config: &Config, wallet: &str, wallet_sol: Option<f64>) -> Result<f64> {

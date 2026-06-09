@@ -123,6 +123,17 @@ impl Screener {
 
         let data: PoolDiscoveryResponse = resp.json().await?;
         let mut raw_pools = data.data.unwrap_or_default();
+
+        // Extract dlmm_bin_step from dlmm_params (API nests it there)
+        for pool in &mut raw_pools {
+            if pool.dlmm_bin_step.is_none() {
+                if let Some(dlmm_params) = pool.extra.get("dlmm_params") {
+                    if let Some(bs) = dlmm_params.get("bin_step").and_then(|v| v.as_u64()) {
+                        pool.dlmm_bin_step = Some(bs as u16);
+                    }
+                }
+            }
+        }
         if s.use_discord_signals {
             match DiscordSignalStore::load_default() {
                 Ok(store) => {

@@ -529,7 +529,12 @@ pub async fn run_screening_cycle(
         return Ok(msg);
     }
 
-    let deploy_amount = compute_deploy_amount(config, wallet_sol);
+    let deploy_amount = if config.dry_run {
+        // In DRY_RUN mode, use deploy_amount_sol as simulated balance
+        config.management.deploy_amount_sol
+    } else {
+        compute_deploy_amount(config, wallet_sol)
+    };
     if deploy_amount <= 0.0 {
         let msg = format!("Not enough SOL ({:.2}) to deploy.", wallet_sol);
         info("cycle", &msg);

@@ -239,10 +239,33 @@ impl CliOutput {
 
 pub fn help_text() -> String {
     [
-        "Meridian RS CLI",
-        "",
+        "Meridian RS command center",
+        "──────────────────────────",
         "Usage:",
+        "  meridian <command> [options]",
+        "",
+        "Core runtime",
         "  meridian setup [--dir <path>] [--force]",
+        "      Generate .env and user-config.json templates.",
+        "  meridian status",
+        "      Print active-position summary as JSON.",
+        "  meridian screen [--wallet <addr>] [--wallet-sol <sol>]",
+        "      Run one screening cycle now.",
+        "  meridian manage [--wallet <addr>]",
+        "      Run one management cycle now.",
+        "",
+        "Trading",
+        "  meridian balance [--wallet <addr>]",
+        "  meridian positions [--wallet <addr>]",
+        "  meridian pnl --pool <pool> --position <position> [--wallet <addr>]",
+        "  meridian candidates [--limit <n>]",
+        "  meridian study --pool <addr> [--limit <n>]",
+        "  meridian deploy --pool <pool> --amount <sol> [--bins-below <n>] [--bins-above <n>] [--strategy spot|curve|bid_ask] [--dry-run]",
+        "  meridian claim --position <position>",
+        "  meridian close --position <position> [--reason <text>] [--skip-swap]",
+        "  meridian swap --from <mint> --amount <tokens>",
+        "",
+        "State & learning",
         "  meridian config get [key] [--file <path>]",
         "  meridian config set <key> <value> [--file <path>]",
         "  meridian lessons list|add|pin|unpin|clear|prompt ...",
@@ -252,20 +275,9 @@ pub fn help_text() -> String {
         "  meridian blacklist list|add|remove|dev-list|dev-add|dev-remove ...",
         "  meridian discord-signals [clear|queue --pool <pool> --base-mint <mint> [--symbol <sym>]]",
         "  meridian strategies [list|show|set-active|remove] [id]",
-        "  meridian status",
-        "  meridian balance [--wallet <addr>]",
-        "  meridian positions [--wallet <addr>]",
-        "  meridian pnl --pool <pool> --position <position> [--wallet <addr>]",
-        "  meridian candidates [--limit <n>]",
-        "  meridian study --pool <addr> [--limit <n>]",
-        "  meridian screen [--wallet <addr>] [--wallet-sol <sol>]",
-        "  meridian manage [--wallet <addr>]",
-        "  meridian deploy --pool <pool> --amount <sol> [--bins-below <n>] [--bins-above <n>] [--strategy spot|curve|bid_ask] [--dry-run]",
-        "  meridian claim --position <position>",
-        "  meridian close --position <position> [--reason <text>] [--skip-swap]",
-        "  meridian swap --from <mint> --amount <tokens>",
         "",
         "No subcommand starts the long-running agent runtime.",
+        "Set MERIDIAN_LOG_STYLE=pretty for readable operator logs, or plain for legacy log lines.",
     ]
     .join("\n")
 }
@@ -1639,6 +1651,22 @@ mod tests {
                 amount: 1.5,
             })
         );
+    }
+
+    #[test]
+    fn help_text_groups_commands_for_readability() {
+        let help = help_text();
+
+        for required in [
+            "Meridian RS command center",
+            "Core runtime",
+            "Trading",
+            "State & learning",
+            "meridian deploy --pool <pool>",
+            "No subcommand starts the long-running agent runtime.",
+        ] {
+            assert!(help.contains(required), "missing help section: {required}");
+        }
     }
 
     #[test]

@@ -9,6 +9,8 @@ mod agent;
 mod cli;
 mod config;
 mod cycle;
+#[cfg(test)]
+mod docs_quality;
 mod lessons;
 mod llm;
 mod models;
@@ -22,7 +24,9 @@ mod web;
 
 use config::llm_config::LlmCredentials;
 use config::{load_config, load_env_files, meridian_data_path};
-use cycle::{run_management_cycle, run_pnl_poll, run_screening_cycle};
+use cycle::{
+    queue_pnl_exit_close_instructions, run_management_cycle, run_pnl_poll, run_screening_cycle,
+};
 use llm::LlmClient;
 use state::pool_memory::PoolMemoryStore;
 use state::positions::PositionState;
@@ -257,23 +261,23 @@ async fn main() -> Result<()> {
             match run_pnl_poll(&config_pnl, &mut positions, &wallet_pnl).await {
                 Ok(exits) => {
                     if !exits.is_empty() {
-                        // Save state after exit detection
-                        if let Err(e) = positions.save(&state_path_pnl) {
-                            warn("pnl_poll", &format!("Failed to save state: {}", e));
-                        }
-                        // TODO: trigger close actions for exits
                         for (addr, reason) in &exits {
                             info("pnl_poll", &format!("Exit needed: {} — {}", addr, reason));
                         }
-                        // Set instruction on positions needing close so management cycle picks them up
-                        for (addr, reason) in &exits {
-                            positions.set_instruction(addr, Some(&format!("CLOSE: {}", reason)));
-                        }
-                        // Save again after setting instructions
+
+                        let queued = queue_pnl_exit_close_instructions(&mut positions, &exits);
+                        info(
+                            "pnl_poll",
+                            &format!(
+                                "Queued {} close instruction(s) for the guarded management flow",
+                                queued
+                            ),
+                        );
+
                         if let Err(e) = positions.save(&state_path_pnl) {
                             warn(
                                 "pnl_poll",
-                                &format!("Failed to save state after instructions: {}", e),
+                                &format!("Failed to save queued close instructions: {}", e),
                             );
                         }
                     }

@@ -78,6 +78,41 @@ struct PnlPollSnapshot {
     active_bin: i32,
 }
 
+fn format_management_action_block(
+    snapshot: &ManagementPositionSnapshot,
+    act: &PositionAction,
+) -> String {
+    let mut block = format!(
+        "POSITION: {}\n  action: {}\n  pnl_pct: {:.2}% | fee_per_tvl: {:.4}% | bins: [{},{}] active={} | oor: {}m",
+        snapshot.id,
+        act.as_str(),
+        snapshot.pnl.unwrap_or(0.0),
+        snapshot.fee_tvl.unwrap_or(0.0),
+        snapshot.lower_bin,
+        snapshot.upper_bin,
+        snapshot.active_bin,
+        snapshot.minutes_out_of_range
+    );
+
+    match act {
+        PositionAction::Close { rule, reason } => {
+            block.push_str(&format!("\n  close_rule: {} ({})", rule, reason));
+        }
+        PositionAction::TrailingExit { reason } => {
+            block.push_str(&format!("\n  trailing_exit_reason: {}", reason));
+        }
+        _ => {}
+    }
+
+    if let Some(instruction) = snapshot.instruction.as_deref() {
+        if !instruction.trim().is_empty() {
+            block.push_str(&format!("\n  instruction: {}", instruction));
+        }
+    }
+
+    block
+}
+
 // ═══════════════════════════════════════════════════════════════════
 //  MANAGEMENT CYCLE (deterministic rules + LLM for actions only)
 // ═══════════════════════════════════════════════════════════════════
@@ -278,18 +313,10 @@ pub async fn run_management_cycle(
             )
         })
         .map(|snapshot| {
-            let act = action_map.get(&snapshot.id).unwrap_or(&PositionAction::Stay);
-            format!(
-                "POSITION: {}\n  action: {}\n  pnl_pct: {:.2}% | fee_per_tvl: {:.4}% | bins: [{},{}] active={} | oor: {}m",
-                snapshot.id,
-                act.as_str(),
-                snapshot.pnl.unwrap_or(0.0),
-                snapshot.fee_tvl.unwrap_or(0.0),
-                snapshot.lower_bin,
-                snapshot.upper_bin,
-                snapshot.active_bin,
-                snapshot.minutes_out_of_range
-            )
+            let act = action_map
+                .get(&snapshot.id)
+                .unwrap_or(&PositionAction::Stay);
+            format_management_action_block(snapshot, act)
         })
         .collect();
 
@@ -446,6 +473,20 @@ pub async fn run_pnl_poll(
     Ok(exits_needed)
 }
 
+pub fn queue_pnl_exit_close_instructions(
+    positions: &mut PositionState,
+    exits: &[(String, String)],
+) -> usize {
+    let mut queued = 0;
+    for (position_id, reason) in exits {
+        let instruction = format!("CLOSE: {}", reason);
+        if positions.set_instruction(position_id, Some(&instruction)) {
+            queued += 1;
+        }
+    }
+    queued
+}
+
 // ═══════════════════════════════════════════════════════════════════
 //  SCREENING CYCLE
 // ═══════════════════════════════════════════════════════════════════
@@ -555,5 +596,47 @@ mod tests {
         assert!(goal.contains("entry: after pullback"));
         assert!(goal.contains("exit: take partial profits"));
         assert!(goal.contains("best for: volatile narrative pools"));
+    }
+
+    #[test]
+    fn pnl_poll_exits_queue_guarded_close_instructions() {
+        let mut positions = PositionState::default();
+        positions.add(crate::state::positions::TrackedPosition {
+            id: "Pos111".to_string(),
+            pool_address: "Pool111".to_string(),
+            base_mint: "Base111".to_string(),
+            lower_bin: 10,
+            upper_bin: 20,
+            amount_sol: 0.25,
+            ..Default::default()
+        });
+
+        let queued = queue_pnl_exit_close_instructions(
+            &mut positions,
+            &[("Pos111".to_string(), "stop loss <script>".to_string())],
+        );
+
+        assert_eq!(queued, 1);
+        let pos = positions.positions.get("Pos111").expect("position exists");
+        assert_eq!(pos.instruction.as_deref(), Some("CLOSE: stop loss"));
+    }
+
+    #[test]
+    fn management_action_block_includes_instruction_text_for_close_queue() {
+        let snapshot = ManagementPositionSnapshot {
+            id: "Pos111".to_string(),
+            pnl: Some(-4.2),
+            fee_tvl: Some(0.0001),
+            instruction: Some("CLOSE: stop loss".to_string()),
+            upper_bin: 20,
+            lower_bin: 10,
+            active_bin: 8,
+            minutes_out_of_range: 12,
+        };
+
+        let block = format_management_action_block(&snapshot, &PositionAction::Instruction);
+
+        assert!(block.contains("action: INSTRUCTION"));
+        assert!(block.contains("instruction: CLOSE: stop loss"));
     }
 }

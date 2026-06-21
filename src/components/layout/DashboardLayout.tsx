@@ -49,12 +49,14 @@ const defaultWidgets: Record<WidgetId, WidgetLayout> = {
   //   center     (open positions + historical — the hero),
   //   right rail (weather + now-playing + activity, widened so log text fits).
   profile: { workspace: 1, x: 0, y: 0, width: 300, height: 470, minWidth: 260, minHeight: 430, z: 1 },
-  candidates: { workspace: 1, x: 0, y: 486, width: 300, height: 672, minWidth: 280, minHeight: 260, z: 1 },
+  // Activity Log now sits under the profile (left rail); Candidate Radar moves
+  // to the right rail under weather/now-playing.
+  activity: { workspace: 1, x: 0, y: 486, width: 300, height: 672, minWidth: 280, minHeight: 260, z: 1 },
   positions: { workspace: 1, x: 316, y: 0, width: 868, height: 336, minWidth: 660, minHeight: 240, z: 1 },
   trades: { workspace: 1, x: 316, y: 352, width: 868, height: 806, minWidth: 520, minHeight: 360, z: 1 },
   weather: { workspace: 1, x: 1200, y: 0, width: 496, height: 264, minWidth: 340, minHeight: 220, z: 1 },
   music: { workspace: 1, x: 1200, y: 280, width: 496, height: 296, minWidth: 360, minHeight: 250, z: 1 },
-  activity: { workspace: 1, x: 1200, y: 592, width: 496, height: 566, minWidth: 360, minHeight: 280, z: 1 },
+  candidates: { workspace: 1, x: 1200, y: 592, width: 496, height: 566, minWidth: 360, minHeight: 280, z: 1 },
   backendStatus: { workspace: 2, x: 0, y: 0, width: 620, height: 360, minWidth: 420, minHeight: 300, z: 1 },
   backendControls: { workspace: 2, x: 636, y: 0, width: 720, height: 560, minWidth: 520, minHeight: 420, z: 1 },
 };

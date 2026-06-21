@@ -554,6 +554,73 @@ h3 { font-size: 15px; }
 .terminal-sidebar .stat-tile .st-head { display: flex; align-items: center; gap: 6px; color: #8e98ad; font-size: 10.5px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap; }
 .terminal-sidebar .stat-tile strong { font-size: 20px; font-weight: 850; color: #eaf0fb; line-height: 1; }
 
+/* ── Sidebar-nav dashboard ─────────────────────────────────────── */
+.dash-shell {
+  display: grid;
+  grid-template-columns: 268px minmax(0, 1fr) 496px;
+  gap: 18px;
+  height: 100%;
+  min-height: 0;
+}
+.dash-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px 18px;
+  border: 1px solid rgba(177, 169, 211, 0.16);
+  border-radius: 18px;
+  background: rgba(13, 14, 26, 0.55);
+  backdrop-filter: blur(14px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.dash-profile { text-align: center; padding-bottom: 4px; }
+.dash-avatar {
+  width: 128px; height: 128px; margin: 4px auto 12px;
+  border-radius: 50%; overflow: hidden;
+  border: 1px solid rgba(244, 85, 255, 0.5);
+  box-shadow: 0 0 24px rgba(219, 75, 255, 0.22), inset 0 0 18px rgba(0, 0, 0, 0.36);
+}
+.dash-avatar img { width: 100%; height: 100%; object-fit: cover; filter: saturate(1.1) contrast(1.06); }
+.dash-profile h1 { margin: 0; font-size: 22px; font-weight: 800; color: #e8edf7; letter-spacing: -0.01em; }
+.dash-profile p { margin: 5px 0 0; color: #a78bfa; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; }
+.dash-stats {
+  display: flex; flex-direction: column;
+  border: 1px solid rgba(177, 169, 211, 0.14);
+  border-radius: 13px;
+  background: rgba(21, 20, 38, 0.32);
+  overflow: hidden;
+}
+.dash-stat-row {
+  display: grid; grid-template-columns: 20px 1fr auto;
+  align-items: center; gap: 11px;
+  padding: 12px 14px;
+  color: #aeb8cb; font-size: 13px;
+}
+.dash-stat-row + .dash-stat-row { border-top: 1px solid rgba(177, 169, 211, 0.10); }
+.dash-stat-row span { font-weight: 560; }
+.dash-stat-row strong { color: #e8edf8; font-size: 15px; font-weight: 800; }
+.dash-stat-row strong.profit { color: var(--green); }
+.dash-stat-row strong.loss { color: #ff6f91; }
+.dash-nav { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+.dash-nav button {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border: 0; border-radius: 11px;
+  background: transparent; color: #9aa3ba;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  text-align: left; transition: background 0.15s, color 0.15s;
+}
+.dash-nav button:hover { background: rgba(138, 116, 255, 0.08); color: #d7d3e8; }
+.dash-nav button.active { background: rgba(138, 116, 255, 0.16); color: #c9b8ff; box-shadow: inset 0 0 0 1px rgba(138, 116, 255, 0.28); }
+.dash-main, .dash-rail {
+  display: flex; flex-direction: column; gap: 18px;
+  min-height: 0; overflow-y: auto; padding-right: 2px;
+  scrollbar-width: thin;
+}
+.dash-main > *, .dash-rail > * { flex: 0 0 auto; }
+.dash-main::-webkit-scrollbar, .dash-rail::-webkit-scrollbar, .dash-sidebar::-webkit-scrollbar { width: 6px; }
+.dash-main::-webkit-scrollbar-thumb, .dash-rail::-webkit-scrollbar-thumb, .dash-sidebar::-webkit-scrollbar-thumb { background: rgba(177, 169, 211, 0.18); border-radius: 3px; }
+
 .trades-card { min-height: 0; }
 .terminal-trades { padding: 26px 28px; }
 .compact { padding-bottom: 28px; }

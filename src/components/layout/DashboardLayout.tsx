@@ -1,16 +1,10 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { Dock } from './Dock';
-import { PositionTable } from '../trading/PositionTable';
-import { PortfolioWidget } from '../trading/PortfolioWidget';
-import { WeatherWidget } from '../widgets/WeatherWidget';
-import { MusicWidget } from '../widgets/MusicWidget';
-import { ActivityWidget } from '../widgets/ActivityWidget';
-import { CandidateWidget } from '../widgets/CandidateWidget';
 import { BackendControlsWidget, BackendStatusWidget } from '../widgets/BackendControlWidgets';
+import { DashboardView } from './DashboardView';
 import { TerminalConsole } from './TerminalConsole';
 import { cachedJson } from '../../lib/clientCache';
 
@@ -507,15 +501,9 @@ export default function DashboardLayout() {
       <Topbar activeWorkspace={workspace || 1} onWorkspaceChange={(nextWorkspace) => { setActiveApp('Dashboard'); setWorkspace(nextWorkspace); }} />
       {workspace >= 1 && workspace <= 5 ? (
         <div className="dashboard-grid">
-          {widgets.profile.workspace === workspace ? dashboardWidget('profile', <Sidebar />) : null}
-          {widgets.positions.workspace === workspace ? dashboardWidget('positions', <PositionTable />) : null}
-          {widgets.trades.workspace === workspace ? dashboardWidget('trades', <PortfolioWidget />) : null}
-          {widgets.weather.workspace === workspace ? dashboardWidget('weather', <WeatherWidget />) : null}
-          {widgets.music.workspace === workspace ? dashboardWidget('music', <MusicWidget />) : null}
-          {widgets.candidates.workspace === workspace ? dashboardWidget('candidates', <CandidateWidget />) : null}
-          {widgets.activity.workspace === workspace ? dashboardWidget('activity', <ActivityWidget />) : null}
-          {widgets.backendStatus.workspace === workspace ? dashboardWidget('backendStatus', <BackendStatusWidget />) : null}
-          {widgets.backendControls.workspace === workspace ? dashboardWidget('backendControls', <BackendControlsWidget />) : null}
+          {workspace === 1 ? <DashboardView /> : null}
+          {workspace === 2 ? dashboardWidget('backendStatus', <BackendStatusWidget />) : null}
+          {workspace === 2 ? dashboardWidget('backendControls', <BackendControlsWidget />) : null}
           {activeApp === 'Terminal' && !terminalMinimized ? (
             <div
               className={`terminal-overlay ${terminalMaximized ? 'maximized terminal-large' : terminalSnap ? `snap-${terminalSnap} terminal-wide` : terminalSize.width > 860 || terminalSize.height > 520 ? 'terminal-wide' : ''}`}

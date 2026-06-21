@@ -165,13 +165,19 @@ export const PositionTable = () => {
         const positionsPayload = Array.isArray(payload?.data?.positions)
           ? payload.data.positions as BackendPosition[]
           : [];
+        // "OPEN POSITIONS" should only list open positions. The backend returns
+        // the full history (active + closed), so drop anything closed — otherwise
+        // the count and rows include stale, already-exited positions.
+        const openPositions = positionsPayload.filter(
+          (position) => String(position.status ?? 'active').toLowerCase() !== 'closed',
+        );
         const candidates = Array.isArray(candidatesPayload?.data?.candidates)
           ? candidatesPayload.data.candidates as Candidate[]
           : [];
         const mintByPool = Object.fromEntries(candidates
           .filter((candidate) => candidate.pool_address && candidate.base?.mint)
           .map((candidate) => [candidate.pool_address as string, candidate.base?.mint as string]));
-        const mints = [...new Set(positionsPayload
+        const mints = [...new Set(openPositions
           .map((position) => resolveMint(position, mintByPool))
           .filter(Boolean) as string[])];
         const prices = await cachedJson<any>(`/api/prices?mints=${encodeURIComponent(mints.join(','))}`, 30_000).catch(() => ({}));
@@ -181,7 +187,7 @@ export const PositionTable = () => {
           mintByPool,
         };
         const nextPositions = Array.isArray(payload?.data?.positions)
-          ? positionsPayload.map((position) => mapPosition(position, pricing))
+          ? openPositions.map((position) => mapPosition(position, pricing))
           : fallbackPositions;
         if (isMounted) setPositions(nextPositions);
       } catch {

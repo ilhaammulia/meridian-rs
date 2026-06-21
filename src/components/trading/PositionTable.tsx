@@ -21,6 +21,9 @@ type BackendPosition = {
   liquidity_token?: number;
   claimable_fee_sol?: number;
   claimable_fee_token?: number;
+  live_pnl_usd?: number;
+  live_pnl_pct?: number;
+  live_value_usd?: number;
   pnl_sol?: number | null;
   signal_snapshot?: {
     priceRange?: { min?: number; max?: number } | null;
@@ -127,8 +130,13 @@ const mapPosition = (position: BackendPosition, pricing: PricingContext): Positi
   const solLegUsd = solLeg * solUsd;
   const tokenLegUsd = tokenLeg * tokenUsd;
   const liquidityUsd = solLegUsd + tokenLegUsd;
-  const pnlUsd = pnlSol * solUsd;
-  const pnlPct = liquidityUsd > 0 ? (pnlUsd / liquidityUsd) * 100 : 0;
+  // Live PnL from the backend (Meteora API: deposits + IL + fees) when present;
+  // fall back to the stored pnl_sol estimate otherwise.
+  const hasLivePnl = position.live_pnl_pct !== undefined || position.live_pnl_usd !== undefined;
+  const pnlUsd = hasLivePnl ? Number(position.live_pnl_usd ?? 0) : pnlSol * solUsd;
+  const pnlPct = hasLivePnl
+    ? Number(position.live_pnl_pct ?? 0)
+    : (liquidityUsd > 0 ? (pnlUsd / liquidityUsd) * 100 : 0);
   // Live claimable (pending) fees from the backend's on-chain quote — the SOL
   // leg and base-token leg are reported separately, not split from a total.
   const feeSolLeg = Number(position.claimable_fee_sol ?? 0);

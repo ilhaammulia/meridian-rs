@@ -117,6 +117,22 @@ pub struct PortfolioResponse {
     pub extra: HashMap<String, serde_json::Value>,
 }
 
+/// Deserialize an optional f64 from either a JSON number or a numeric string.
+/// The Meteora PnL API returns several numeric fields (feePerTvl24h, balancesSol,
+/// token amounts, …) as strings, which a plain `Option<f64>` rejects — failing
+/// the WHOLE response parse and silently zeroing PnL (and thus TP/SL).
+fn de_opt_f64<'de, D>(deserializer: D) -> std::result::Result<Option<f64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+    Ok(match serde_json::Value::deserialize(deserializer)? {
+        serde_json::Value::Number(n) => n.as_f64(),
+        serde_json::Value::String(s) => s.trim().parse::<f64>().ok(),
+        _ => None,
+    })
+}
+
 /// PnL data from Meteora DLMM PnL API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -128,11 +144,17 @@ pub struct PositionPnlData {
     pub upper_bin_id: Option<i32>,
     pub pool_active_bin_id: Option<i32>,
     pub is_out_of_range: Option<bool>,
+    #[serde(default, deserialize_with = "de_opt_f64")]
     pub pnl_usd: Option<f64>,
+    #[serde(default, deserialize_with = "de_opt_f64")]
     pub pnl_sol: Option<f64>,
+    #[serde(default, deserialize_with = "de_opt_f64")]
     pub pnl_pct_change: Option<f64>,
+    #[serde(default, deserialize_with = "de_opt_f64")]
     pub pnl_sol_pct_change: Option<f64>,
+    #[serde(default, deserialize_with = "de_opt_f64")]
     pub created_at: Option<f64>,
+    #[serde(default, deserialize_with = "de_opt_f64")]
     pub fee_per_tvl_24h: Option<f64>,
     #[serde(default)]
     pub unrealized_pnl: Option<UnrealizedPnl>,
@@ -150,7 +172,9 @@ pub struct PositionPnlData {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UnrealizedPnl {
+    #[serde(default, deserialize_with = "de_opt_f64")]
     pub balances: Option<f64>,
+    #[serde(default, deserialize_with = "de_opt_f64")]
     pub balances_sol: Option<f64>,
     #[serde(default)]
     pub unclaimed_fee_token_x: Option<TokenAmount>,
@@ -162,7 +186,9 @@ pub struct UnrealizedPnl {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TokenAmount {
+    #[serde(default, deserialize_with = "de_opt_f64")]
     pub amount_sol: Option<f64>,
+    #[serde(default, deserialize_with = "de_opt_f64")]
     pub usd: Option<f64>,
 }
 
@@ -177,7 +203,9 @@ pub struct AllTimeAmounts {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AllTimeTotal {
+    #[serde(default, deserialize_with = "de_opt_f64")]
     pub sol: Option<f64>,
+    #[serde(default, deserialize_with = "de_opt_f64")]
     pub usd: Option<f64>,
 }
 

@@ -594,15 +594,17 @@ async fn get_positions(State(state): State<WebAppState>) -> Json<Value> {
     Json(json_ok("positions", payload))
 }
 
-/// Add live on-chain `liquidity_*` and `claimable_fee_*` (SOL + base token) to
-/// each open position via a single read-only close quote. Best-effort: any
-/// position that fails to quote is left untouched so one bad position never
-/// breaks the endpoint.
+/// Enrich each open position with live values: on-chain `liquidity_*` /
+/// `claimable_fee_*` (SOL + base token) from a read-only close quote, and
+/// `live_pnl_usd` / `live_pnl_pct` / `live_value_usd` from the Meteora PnL API.
+/// Best-effort and decoupled: a failure in one source never blocks the other,
+/// and one bad position never breaks the endpoint.
 async fn enrich_position_state(payload: &mut Value, config: &Config) {
     let Some(positions) = payload.get_mut("positions").and_then(Value::as_array_mut) else {
         return;
     };
     let http = reqwest::Client::new();
+    let wallet = crate::tools::meteora_native::wallet_pubkey_from_env().unwrap_or_default();
     for position in positions.iter_mut() {
         let status = position
             .get("status")
@@ -615,34 +617,62 @@ async fn enrich_position_state(payload: &mut Value, config: &Config) {
         let Some(id) = position.get("id").and_then(Value::as_str).map(str::to_string) else {
             continue;
         };
-        let Ok(quote) = crate::tools::meteora_native::quote_position_state(&id, config).await else {
-            continue;
-        };
-        // Resolve base-token decimals once to convert the raw token legs.
+        let pool_address = position
+            .get("pool_address")
+            .and_then(Value::as_str)
+            .map(str::to_string);
         let base_mint = position
             .get("base_mint")
             .and_then(Value::as_str)
             .map(str::to_string);
-        let token_decimals = match &base_mint {
-            Some(mint) if quote.liquidity_x > 0 || quote.fee_x > 0 => {
+
+        // ── Live liquidity + claimable fees (on-chain read-only quote) ──
+        let quote = crate::tools::meteora_native::quote_position_state(&id, config)
+            .await
+            .ok();
+        let token_decimals = match (&base_mint, &quote) {
+            (Some(mint), Some(q)) if q.liquidity_x > 0 || q.fee_x > 0 => {
                 crate::tools::wallet::resolve_mint_decimals(&http, config, mint)
                     .await
                     .ok()
             }
             _ => None,
         };
-        let to_token = |raw: u64| -> f64 {
-            match token_decimals {
+
+        // ── Live PnL (Meteora API: accounts for deposits, IL and fees) ──
+        let pnl = match &pool_address {
+            Some(pool) if !wallet.is_empty() => {
+                crate::tools::dlmm::get_position_pnl(pool, &id, &wallet)
+                    .await
+                    .ok()
+            }
+            _ => None,
+        };
+
+        let Some(obj) = position.as_object_mut() else {
+            continue;
+        };
+        if let Some(q) = quote {
+            let to_token = |raw: u64| match token_decimals {
                 Some(decimals) => raw as f64 / 10f64.powi(decimals as i32),
                 None => 0.0,
+            };
+            let to_sol = |raw: u64| raw as f64 / 1_000_000_000.0;
+            obj.insert("liquidity_sol".to_string(), json!(to_sol(q.liquidity_y)));
+            obj.insert("liquidity_token".to_string(), json!(to_token(q.liquidity_x)));
+            obj.insert("claimable_fee_sol".to_string(), json!(to_sol(q.fee_y)));
+            obj.insert("claimable_fee_token".to_string(), json!(to_token(q.fee_x)));
+        }
+        if let Some(pnl) = pnl {
+            if let Some(value) = pnl.pnl_usd {
+                obj.insert("live_pnl_usd".to_string(), json!(value));
             }
-        };
-        let lamports_to_sol = |raw: u64| raw as f64 / 1_000_000_000.0;
-        if let Some(obj) = position.as_object_mut() {
-            obj.insert("liquidity_sol".to_string(), json!(lamports_to_sol(quote.liquidity_y)));
-            obj.insert("liquidity_token".to_string(), json!(to_token(quote.liquidity_x)));
-            obj.insert("claimable_fee_sol".to_string(), json!(lamports_to_sol(quote.fee_y)));
-            obj.insert("claimable_fee_token".to_string(), json!(to_token(quote.fee_x)));
+            if let Some(value) = pnl.pnl_pct {
+                obj.insert("live_pnl_pct".to_string(), json!(value));
+            }
+            if let Some(value) = pnl.current_value_usd {
+                obj.insert("live_value_usd".to_string(), json!(value));
+            }
         }
     }
 }

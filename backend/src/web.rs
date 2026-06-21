@@ -586,7 +586,7 @@ async fn get_positions(State(state): State<WebAppState>) -> Json<Value> {
     // not just the historical claimed total.
     let payload = match (payload, config) {
         (Ok(mut value), Some(config)) if !config.dry_run => {
-            enrich_claimable_fees(&mut value, &config).await;
+            enrich_position_state(&mut value, &config).await;
             Ok(value)
         }
         (payload, _) => payload,
@@ -594,10 +594,11 @@ async fn get_positions(State(state): State<WebAppState>) -> Json<Value> {
     Json(json_ok("positions", payload))
 }
 
-/// Add `claimable_fee_sol` / `claimable_fee_token` to each open position by
-/// quoting its pending fees on-chain (read-only). Best-effort: any position that
-/// fails to quote is left as 0 so one bad position never breaks the endpoint.
-async fn enrich_claimable_fees(payload: &mut Value, config: &Config) {
+/// Add live on-chain `liquidity_*` and `claimable_fee_*` (SOL + base token) to
+/// each open position via a single read-only close quote. Best-effort: any
+/// position that fails to quote is left untouched so one bad position never
+/// breaks the endpoint.
+async fn enrich_position_state(payload: &mut Value, config: &Config) {
     let Some(positions) = payload.get_mut("positions").and_then(Value::as_array_mut) else {
         return;
     };
@@ -614,28 +615,34 @@ async fn enrich_claimable_fees(payload: &mut Value, config: &Config) {
         let Some(id) = position.get("id").and_then(Value::as_str).map(str::to_string) else {
             continue;
         };
-        let (fee_x_raw, fee_y_lamports) =
-            crate::tools::meteora_native::quote_claimable_fees(&id, config)
-                .await
-                .unwrap_or_default();
-        let sol = fee_y_lamports as f64 / 1_000_000_000.0;
+        let Ok(quote) = crate::tools::meteora_native::quote_position_state(&id, config).await else {
+            continue;
+        };
+        // Resolve base-token decimals once to convert the raw token legs.
         let base_mint = position
             .get("base_mint")
             .and_then(Value::as_str)
             .map(str::to_string);
-        let token = if fee_x_raw == 0 {
-            0.0
-        } else if let Some(mint) = base_mint {
-            match crate::tools::wallet::resolve_mint_decimals(&http, config, &mint).await {
-                Ok(decimals) => fee_x_raw as f64 / 10f64.powi(decimals as i32),
-                Err(_) => 0.0,
+        let token_decimals = match &base_mint {
+            Some(mint) if quote.liquidity_x > 0 || quote.fee_x > 0 => {
+                crate::tools::wallet::resolve_mint_decimals(&http, config, mint)
+                    .await
+                    .ok()
             }
-        } else {
-            0.0
+            _ => None,
         };
+        let to_token = |raw: u64| -> f64 {
+            match token_decimals {
+                Some(decimals) => raw as f64 / 10f64.powi(decimals as i32),
+                None => 0.0,
+            }
+        };
+        let lamports_to_sol = |raw: u64| raw as f64 / 1_000_000_000.0;
         if let Some(obj) = position.as_object_mut() {
-            obj.insert("claimable_fee_sol".to_string(), json!(sol));
-            obj.insert("claimable_fee_token".to_string(), json!(token));
+            obj.insert("liquidity_sol".to_string(), json!(lamports_to_sol(quote.liquidity_y)));
+            obj.insert("liquidity_token".to_string(), json!(to_token(quote.liquidity_x)));
+            obj.insert("claimable_fee_sol".to_string(), json!(lamports_to_sol(quote.fee_y)));
+            obj.insert("claimable_fee_token".to_string(), json!(to_token(quote.fee_x)));
         }
     }
 }

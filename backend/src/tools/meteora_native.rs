@@ -380,30 +380,48 @@ pub async fn claim_fees(position_address: &str, config: &Config) -> Result<Nativ
     })
 }
 
-/// Read-only on-chain quote of a position's currently claimable (pending) fees,
-/// returned as `(base_token_x_raw, sol_y_lamports)`. Runs the same fetch + plan
-/// math as a claim but never builds or sends a transaction, so it's safe to call
-/// repeatedly (e.g. to populate the dashboard). token_y on a SOL-quoted pool is
-/// SOL (9 decimals); token_x is the base token in its own decimals.
-pub async fn quote_claimable_fees(position_address: &str, config: &Config) -> Result<(u64, u64)> {
-    use wp_solana_meteora_dlmm_core::plan::claim_fee::plan_claim_fee;
-    use wp_solana_meteora_dlmm_sdk::fetch::claim_fee::fetch_claim_fee_snapshot;
+/// Read-only on-chain snapshot of a position's current value: the liquidity that
+/// would be returned on close plus the pending (claimable) fees. All amounts are
+/// raw — `*_x` is the base token in its own decimals, `*_y` is SOL in lamports on
+/// a SOL-quoted pool.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PositionQuote {
+    pub liquidity_x: u64,
+    pub liquidity_y: u64,
+    pub fee_x: u64,
+    pub fee_y: u64,
+}
+
+/// Quote a position's live liquidity and claimable fees by running the same
+/// fetch + plan math as a close, but never building or sending a transaction —
+/// safe to call repeatedly (e.g. to populate the dashboard). A single
+/// `plan_close_position` yields both the remove-liquidity amounts and the
+/// pending fees, so this is one fetch per position rather than two.
+pub async fn quote_position_state(position_address: &str, config: &Config) -> Result<PositionQuote> {
+    use wp_solana_meteora_dlmm_core::plan::close_position::plan_close_position;
+    use wp_solana_meteora_dlmm_sdk::fetch::close_position::fetch_close_position_snapshot;
 
     let keypair = keypair_from_secret(&wallet_secret_from_env()?)?;
     let position = parse_pubkey("DLMM position address", position_address)?;
     let rpc_client = RpcClient::new(resolve_rpc_url(config));
     let rpc_ctx = RpcContext::confirmed(Arc::new(rpc_client));
-    let params = ClaimFeeParams {
+    let params = ClosePositionParams {
         position_address: position,
         authority: keypair.pubkey(),
+        rent_receiver: None,
     };
-    let snapshot = fetch_claim_fee_snapshot(&rpc_ctx.client, &params)
+    let snapshot = fetch_close_position_snapshot(&rpc_ctx.client, &params)
         .await
-        .map_err(|e| anyhow!("fetch claim-fee snapshot: {}", e))?;
+        .map_err(|e| anyhow!("fetch position snapshot: {}", e))?;
     let plan_config = WorkspacePlanConfig::default();
-    let plan = plan_claim_fee(&snapshot, params, &plan_config)
-        .map_err(|e| anyhow!("plan claim fee quote: {}", e))?;
-    Ok((plan.quote.claimable_fee_x, plan.quote.claimable_fee_y))
+    let plan = plan_close_position(&snapshot, params, &plan_config)
+        .map_err(|e| anyhow!("plan position quote: {}", e))?;
+    Ok(PositionQuote {
+        liquidity_x: plan.quote.remove_liquidity_amount_x,
+        liquidity_y: plan.quote.remove_liquidity_amount_y,
+        fee_x: plan.quote.claimable_fee_x,
+        fee_y: plan.quote.claimable_fee_y,
+    })
 }
 
 /// SPL Token program id.

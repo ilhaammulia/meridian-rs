@@ -17,6 +17,8 @@ type BackendPosition = {
   status?: string;
   created_at?: string;
   total_fees_claimed?: number;
+  liquidity_sol?: number;
+  liquidity_token?: number;
   claimable_fee_sol?: number;
   claimable_fee_token?: number;
   pnl_sol?: number | null;
@@ -115,12 +117,18 @@ const mapPosition = (position: BackendPosition, pricing: PricingContext): Positi
   const solUsd = pricing.solUsd;
   const mint = resolveMint(position, pricing.mintByPool);
   const tokenUsd = mint ? Number(pricing.tokenPrices[mint] ?? 0) : 0;
-  const liquidityUsd = amountSol * solUsd;
+  // Live on-chain liquidity legs (from the backend close quote) when present;
+  // fall back to splitting the deploy amount when not enriched (e.g. dry-run).
+  const hasLiveLiquidity = position.liquidity_sol !== undefined;
+  const solLeg = hasLiveLiquidity ? Number(position.liquidity_sol ?? 0) : amountSol / 2;
+  const tokenLeg = hasLiveLiquidity
+    ? Number(position.liquidity_token ?? 0)
+    : (tokenUsd > 0 ? ((amountSol / 2) * solUsd) / tokenUsd : 0);
+  const solLegUsd = solLeg * solUsd;
+  const tokenLegUsd = tokenLeg * tokenUsd;
+  const liquidityUsd = solLegUsd + tokenLegUsd;
   const pnlUsd = pnlSol * solUsd;
   const pnlPct = liquidityUsd > 0 ? (pnlUsd / liquidityUsd) * 100 : 0;
-  const solLeg = amountSol / 2;
-  const tokenLegUsd = Math.max(0, liquidityUsd - (solLeg * solUsd));
-  const tokenLeg = tokenUsd > 0 ? tokenLegUsd / tokenUsd : 0;
   // Live claimable (pending) fees from the backend's on-chain quote — the SOL
   // leg and base-token leg are reported separately, not split from a total.
   const feeSolLeg = Number(position.claimable_fee_sol ?? 0);
@@ -136,10 +144,10 @@ const mapPosition = (position: BackendPosition, pricing: PricingContext): Positi
     range: rangeFromSnapshot(position) ?? formatRange(position.lower_bin, position.upper_bin, tokenUsd, solUsd),
     quote: `SOL per ${symbol}`,
     liquidityUsd: formatUsd(liquidityUsd),
-    liquidityPrimary: `${solLeg.toFixed(4)} SOL (${formatUsd(solLeg * solUsd)})`,
+    liquidityPrimary: `${solLeg.toFixed(4)} SOL (${formatUsd(solLegUsd)})`,
     liquiditySecondary: tokenUsd > 0
       ? `${formatTokenAmount(tokenLeg)} ${symbol} (${formatUsd(tokenLegUsd)})`
-      : `${symbol} price unavailable`,
+      : `${formatTokenAmount(tokenLeg)} ${symbol}`,
     feesUsd: formatUsd(feesUsd),
     feesPrimary: `${feeSolLeg.toFixed(6)} SOL (${formatUsd(feeSolUsd)})`,
     feesSecondary: tokenUsd > 0

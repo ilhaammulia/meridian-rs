@@ -885,16 +885,18 @@ impl ToolExecutor {
         Ok(())
     }
 
-    async fn maybe_auto_swap_after_close(
+    async fn maybe_auto_swap_base_to_sol(
         &self,
         close_result: &mut Value,
         skip_swap: bool,
         config: &Config,
     ) -> Result<()> {
-        // Unless the caller wants to keep the token (e.g. a re-seed strategy),
-        // swap any claimed base token back to SOL. The balance is read straight
-        // from the wallet keypair, so this works regardless of sol_mode, of a
-        // dust USD estimate, or of whether MERIDIAN_WALLET is set.
+        // Used after BOTH close_position and claim_fees. Unless the caller wants
+        // to keep the token (e.g. a re-seed strategy), swap any claimed/withdrawn
+        // base token back to SOL so capital compounds instead of piling up as
+        // token dust. The balance is read straight from the wallet keypair, so
+        // this works regardless of sol_mode, of a dust USD estimate, or of
+        // whether MERIDIAN_WALLET is set.
         if skip_swap {
             return Ok(());
         }
@@ -925,9 +927,11 @@ impl ToolExecutor {
 
         info(
             "executor",
-            &format!("Auto-swapping {} of {} back to SOL after close", balance, base_mint),
+            &format!("Auto-swapping {} of {} back to SOL", balance, base_mint),
         );
-        match swap_token(&base_mint, balance, 50, 100, config).await {
+        // 300 bps (3%) slippage — fee/withdraw amounts are small and we prefer a
+        // filled swap over a tight price on thin, volatile launch tokens.
+        match swap_token(&base_mint, balance, 300, 100, config).await {
             Ok(swap) => {
                 if let Some(map) = close_result.as_object_mut() {
                     map.insert("autoSwapped".to_string(), Value::Bool(swap.success));
@@ -1649,7 +1653,7 @@ impl ToolExecutor {
                 let close = close_position(position, reason, config).await?;
                 let mut result = serde_json::to_value(&close)?;
                 enrich_close_result_with_position_metadata(&mut result, args, positions);
-                self.maybe_auto_swap_after_close(&mut result, skip_swap, config)
+                self.maybe_auto_swap_base_to_sol(&mut result, skip_swap, config)
                     .await?;
                 Ok(serde_json::to_string_pretty(&result)?)
             }
@@ -1661,8 +1665,20 @@ impl ToolExecutor {
                 if position.is_empty() {
                     anyhow::bail!("position_id or position_address required");
                 }
+                let skip_swap = args["skip_swap"]
+                    .as_bool()
+                    .or_else(|| args["skipSwap"].as_bool())
+                    .unwrap_or(false);
                 match claim_fees(position, config).await {
-                    Ok(result) => Ok(serde_json::to_string_pretty(&result)?),
+                    Ok(claim) => {
+                        // Same as close: swap the claimed base token back to SOL
+                        // so harvested fees compound instead of piling up as dust.
+                        let mut result = serde_json::to_value(&claim)?;
+                        enrich_close_result_with_position_metadata(&mut result, args, positions);
+                        self.maybe_auto_swap_base_to_sol(&mut result, skip_swap, config)
+                            .await?;
+                        Ok(serde_json::to_string_pretty(&result)?)
+                    }
                     Err(e) => Ok(json!({
                         "success": false,
                         "position": position,

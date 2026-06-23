@@ -529,7 +529,7 @@ pub async fn resolve_mint_decimals(
 pub async fn swap_token(
     mint: &str,
     amount: f64,
-    _slippage_bps: u32,
+    slippage_bps: u32,
     referral_bps: u32,
     config: &Config,
 ) -> Result<SwapResult> {
@@ -574,11 +574,16 @@ pub async fn swap_token(
     let amount_base_units = (amount * 10f64.powi(decimals as i32)).floor() as u64;
     let amount_str = amount_base_units.to_string();
 
-    // Build order URL
+    // Build order URL. Pin an explicit slippage when provided — without
+    // slippageBps thin/volatile fee tokens (e.g. *pump launches) often fail to
+    // route, leaving the token stuck in the wallet instead of swapping to SOL.
     let mut url = format!(
         "{}/order?inputMint={}&outputMint={}&amount={}&taker={}",
         JUPITER_SWAP_V2_API, input_mint, output_mint, amount_str, taker,
     );
+    if slippage_bps > 0 {
+        url = format!("{}&slippageBps={}", url, slippage_bps);
+    }
 
     let referral_params = get_referral_params(config).map(|(account, configured_bps)| {
         let fee_bps = if (50..=255).contains(&referral_bps) {

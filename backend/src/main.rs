@@ -403,13 +403,15 @@ async fn main() -> Result<()> {
                                 queued
                             ),
                         );
+                    }
 
-                        if let Err(e) = positions.save(&state_path_pnl) {
-                            warn(
-                                "pnl_poll",
-                                &format!("Failed to save queued close instructions: {}", e),
-                            );
-                        }
+                    // Persist on EVERY poll, not just when an exit is queued —
+                    // run_pnl_poll updates the OOR timer (mark_oor/mark_in_range)
+                    // each tick. Saving only on exits meant out_of_range_since
+                    // never persisted, so the OOR timer reset every poll and the
+                    // OOR close rule could never reach its wait threshold.
+                    if let Err(e) = positions.save(&state_path_pnl) {
+                        warn("pnl_poll", &format!("Failed to save poll state: {}", e));
                     }
                 }
                 Err(e) => {

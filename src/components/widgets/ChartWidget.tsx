@@ -1,0 +1,193 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { CandlestickChart, Radar } from 'lucide-react';
+import { GlassCard } from '../ui/GlassCard';
+import { cachedJson } from '../../lib/clientCache';
+
+type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number };
+
+export type ChartSlot = {
+  mint: string;
+  name: string;
+  source: 'position' | 'candidate';
+};
+
+const BB_PERIOD = 20;
+const BB_MIN = 0.8; // mirror chartIndicators.bbPercentBMin
+
+type Bands = { mid: number; upper: number; lower: number } | null;
+
+const bollinger = (closes: number[], i: number, period = BB_PERIOD): Bands => {
+  if (i < period - 1) return null;
+  const window = closes.slice(i - period + 1, i + 1);
+  const mid = window.reduce((a, b) => a + b, 0) / period;
+  const variance = window.reduce((a, b) => a + (b - mid) ** 2, 0) / period;
+  const sd = Math.sqrt(variance);
+  return { mid, upper: mid + 2 * sd, lower: mid - 2 * sd };
+};
+
+const fmtPrice = (n: number) => {
+  if (!Number.isFinite(n) || n <= 0) return '—';
+  if (n >= 1) return n.toFixed(4);
+  // subscript-zero compact notation for tiny memecoin prices
+  const s = n.toFixed(12);
+  const m = s.match(/^0\.(0+)(\d{1,4})/);
+  if (m) return `0.0${m[1].length > 1 ? `(${m[1].length})` : ''}${m[2]}`;
+  return n.toPrecision(3);
+};
+
+export const ChartWidget = ({ slot, index }: { slot: ChartSlot | null; index: number }) => {
+  const [candles, setCandles] = useState<Candle[]>([]);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'ok' | 'empty' | 'error'>('idle');
+
+  useEffect(() => {
+    if (!slot?.mint) {
+      setCandles([]);
+      setStatus('empty');
+      return;
+    }
+    let mounted = true;
+    const load = async () => {
+      setStatus((s) => (s === 'ok' ? 'ok' : 'loading'));
+      try {
+        const payload = await cachedJson<{ candles: Candle[] }>(
+          `/api/chart/${slot.mint}?interval=5_MINUTE&candles=120`,
+          20_000,
+        );
+        const list = (payload?.candles ?? []).filter((c) => c && c.close > 0);
+        if (!mounted) return;
+        setCandles(list);
+        setStatus(list.length >= BB_PERIOD ? 'ok' : list.length ? 'ok' : 'error');
+      } catch {
+        if (mounted) setStatus('error');
+      }
+    };
+    load();
+    const t = window.setInterval(load, 20_000);
+    return () => {
+      mounted = false;
+      window.clearInterval(t);
+    };
+  }, [slot?.mint]);
+
+  const view = useMemo(() => {
+    const last = candles.slice(-80);
+    if (last.length < 2) return null;
+    const closes = candles.map((c) => c.close);
+    const offset = candles.length - last.length;
+    const bands = last.map((_, i) => bollinger(closes, offset + i));
+
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (let i = 0; i < last.length; i += 1) {
+      lo = Math.min(lo, last[i].low);
+      hi = Math.max(hi, last[i].high);
+      const b = bands[i];
+      if (b) {
+        lo = Math.min(lo, b.lower);
+        hi = Math.max(hi, b.upper);
+      }
+    }
+    if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi <= lo) return null;
+
+    const W = 400;
+    const H = 188;
+    const padX = 6;
+    const padY = 10;
+    const span = hi - lo;
+    const x = (i: number) => padX + (i * (W - 2 * padX)) / (last.length - 1);
+    const y = (p: number) => padY + (1 - (p - lo) / span) * (H - 2 * padY);
+    const cw = Math.max(1.4, (W - 2 * padX) / last.length - 1.4);
+
+    const line = (key: 'upper' | 'mid' | 'lower') =>
+      bands
+        .map((b, i) => (b ? `${x(i).toFixed(1)},${y(b[key]).toFixed(1)}` : null))
+        .filter(Boolean)
+        .join(' ');
+
+    // %B of the latest candle
+    const lastBand = bollinger(closes, closes.length - 1);
+    const lastClose = closes[closes.length - 1];
+    const pctB =
+      lastBand && lastBand.upper > lastBand.lower
+        ? (lastClose - lastBand.lower) / (lastBand.upper - lastBand.lower)
+        : null;
+
+    return { last, bands, W, H, x, y, cw, line, pctB, lastClose };
+  }, [candles]);
+
+  const pctB = view?.pctB ?? null;
+  const deployable = pctB != null && pctB >= BB_MIN;
+
+  return (
+    <GlassCard className="chart-card">
+      <div className="chart-head">
+        <div className="chart-title">
+          <CandlestickChart size={16} />
+          <strong>{slot?.name ?? 'Empty slot'}</strong>
+          {slot ? (
+            <span className={`chart-tag ${slot.source}`}>
+              {slot.source === 'position' ? 'POSITION' : <><Radar size={10} /> RADAR</>}
+            </span>
+          ) : null}
+        </div>
+        {pctB != null ? (
+          <div className={`chart-signal ${deployable ? 'go' : 'wait'}`}>
+            <span className="bb-label">%B</span>
+            <strong>{pctB.toFixed(2)}</strong>
+            <em>{deployable ? 'DEPLOY' : 'wait'}</em>
+          </div>
+        ) : null}
+      </div>
+
+      {view ? (
+        <svg className="chart-svg" viewBox={`0 0 ${view.W} ${view.H}`} preserveAspectRatio="none">
+          {/* Bollinger band fill */}
+          <polygon
+            className="bb-fill"
+            points={`${view.line('upper')} ${view.bands
+              .map((b, i) => (b ? `${view.x(i).toFixed(1)},${view.y(b.lower).toFixed(1)}` : null))
+              .filter(Boolean)
+              .reverse()
+              .join(' ')}`}
+          />
+          <polyline className="bb-upper" points={view.line('upper')} fill="none" />
+          <polyline className="bb-mid" points={view.line('mid')} fill="none" />
+          <polyline className="bb-lower" points={view.line('lower')} fill="none" />
+          {/* Candles */}
+          {view.last.map((c, i) => {
+            const up = c.close >= c.open;
+            const bodyTop = view.y(Math.max(c.open, c.close));
+            const bodyBot = view.y(Math.min(c.open, c.close));
+            return (
+              <g key={c.time ?? i} className={up ? 'candle up' : 'candle down'}>
+                <line x1={view.x(i)} x2={view.x(i)} y1={view.y(c.high)} y2={view.y(c.low)} className="wick" />
+                <rect
+                  x={view.x(i) - view.cw / 2}
+                  y={bodyTop}
+                  width={view.cw}
+                  height={Math.max(0.8, bodyBot - bodyTop)}
+                  className="body"
+                />
+              </g>
+            );
+          })}
+        </svg>
+      ) : (
+        <div className="chart-empty">
+          {status === 'loading' && 'Loading chart…'}
+          {status === 'empty' && `Waiting for position ${index + 1}…`}
+          {status === 'error' && 'Chart data unavailable'}
+          {status === 'idle' && '—'}
+          {status === 'ok' && 'Not enough candles'}
+        </div>
+      )}
+
+      <div className="chart-foot">
+        <span>{slot ? `${slot.mint.slice(0, 4)}…${slot.mint.slice(-4)}` : 'no token'}</span>
+        <span>{view ? fmtPrice(view.lastClose) : ''} · BB(20,2) 5m</span>
+      </div>
+    </GlassCard>
+  );
+};

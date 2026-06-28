@@ -3,8 +3,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Topbar } from './Topbar';
 import { Dock } from './Dock';
-import { BackendControlsWidget, BackendStatusWidget } from '../widgets/BackendControlWidgets';
 import { DashboardView } from './DashboardView';
+import { ChartGridView } from './ChartGridView';
 import { TerminalConsole } from './TerminalConsole';
 import { cachedJson } from '../../lib/clientCache';
 
@@ -24,7 +24,7 @@ type SystemInfo = {
   disks: Array<{ id: string; used: string; total: string; percent: number }>;
 };
 
-type WidgetId = 'profile' | 'positions' | 'trades' | 'weather' | 'music' | 'activity' | 'candidates' | 'backendStatus' | 'backendControls';
+type WidgetId = 'profile' | 'positions' | 'trades' | 'weather' | 'music' | 'activity' | 'candidates';
 
 type WidgetLayout = {
   workspace: number;
@@ -51,8 +51,6 @@ const defaultWidgets: Record<WidgetId, WidgetLayout> = {
   weather: { workspace: 1, x: 1200, y: 0, width: 496, height: 264, minWidth: 340, minHeight: 220, z: 1 },
   music: { workspace: 1, x: 1200, y: 280, width: 496, height: 296, minWidth: 360, minHeight: 250, z: 1 },
   candidates: { workspace: 1, x: 1200, y: 592, width: 496, height: 566, minWidth: 360, minHeight: 280, z: 1 },
-  backendStatus: { workspace: 2, x: 0, y: 0, width: 620, height: 360, minWidth: 420, minHeight: 300, z: 1 },
-  backendControls: { workspace: 2, x: 636, y: 0, width: 720, height: 560, minWidth: 520, minHeight: 420, z: 1 },
 };
 
 const fallbackSystem: SystemInfo = {
@@ -502,8 +500,7 @@ export default function DashboardLayout() {
       {workspace >= 1 && workspace <= 5 ? (
         <div className="dashboard-grid">
           {workspace === 1 ? <DashboardView /> : null}
-          {workspace === 2 ? dashboardWidget('backendStatus', <BackendStatusWidget />) : null}
-          {workspace === 2 ? dashboardWidget('backendControls', <BackendControlsWidget />) : null}
+          {workspace === 2 ? <ChartGridView /> : null}
           {activeApp === 'Terminal' && !terminalMinimized ? (
             <div
               className={`terminal-overlay ${terminalMaximized ? 'maximized terminal-large' : terminalSnap ? `snap-${terminalSnap} terminal-wide` : terminalSize.width > 860 || terminalSize.height > 520 ? 'terminal-wide' : ''}`}

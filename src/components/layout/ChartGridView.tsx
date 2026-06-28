@@ -7,6 +7,12 @@ import { cachedJson } from '../../lib/clientCache';
 
 const SLOTS = 4;
 
+// Module-level cache so switching tabs/widgets and coming back shows the last
+// known chart slots instantly instead of resetting to empty while positions
+// refetch.
+let cachedSlots: (ChartSlot | null)[] = [null, null, null, null];
+let cachedPosCount = 0;
+
 // Charts track ONLY live open positions. No position → empty slot. One
 // position → one chart, the rest stay empty (no radar auto-fill).
 const buildSlots = (positions: any): (ChartSlot | null)[] => {
@@ -28,8 +34,8 @@ const buildSlots = (positions: any): (ChartSlot | null)[] => {
 };
 
 export const ChartGridView = () => {
-  const [slots, setSlots] = useState<(ChartSlot | null)[]>([null, null, null, null]);
-  const [posCount, setPosCount] = useState(0);
+  const [slots, setSlots] = useState<(ChartSlot | null)[]>(cachedSlots);
+  const [posCount, setPosCount] = useState(cachedPosCount);
 
   useEffect(() => {
     let mounted = true;
@@ -37,9 +43,14 @@ export const ChartGridView = () => {
       try {
         const positions = await cachedJson<any>('/api/meridian/positions', 8_000).catch(() => null);
         if (!mounted) return;
+        // Only update from an authoritative response; if positions couldn't be
+        // fetched, keep the cached slots instead of clearing the grid.
+        if (!Array.isArray(positions?.data?.positions)) return;
         const next = buildSlots(positions);
+        cachedSlots = next;
+        cachedPosCount = next.filter((s) => s?.source === 'position').length;
         setSlots(next);
-        setPosCount(next.filter((s) => s?.source === 'position').length);
+        setPosCount(cachedPosCount);
       } catch {
         /* keep previous slots */
       }

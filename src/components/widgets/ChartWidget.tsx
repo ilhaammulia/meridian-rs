@@ -37,9 +37,19 @@ const fmtPrice = (n: number) => {
   return n.toPrecision(3);
 };
 
+// Module-level candle cache keyed by mint — survives remounts (tab/widget
+// switches) so a chart renders its last data instantly instead of flashing
+// "Loading…" while the refetch runs.
+const candleCache = new Map<string, Candle[]>();
+
 export const ChartWidget = ({ slot, index }: { slot: ChartSlot | null; index: number }) => {
-  const [candles, setCandles] = useState<Candle[]>([]);
-  const [status, setStatus] = useState<'idle' | 'loading' | 'ok' | 'empty' | 'error'>('idle');
+  const [candles, setCandles] = useState<Candle[]>(() =>
+    slot?.mint ? candleCache.get(slot.mint) ?? [] : [],
+  );
+  const [status, setStatus] = useState<'idle' | 'loading' | 'ok' | 'empty' | 'error'>(() => {
+    if (!slot?.mint) return 'empty';
+    return (candleCache.get(slot.mint)?.length ?? 0) >= 2 ? 'ok' : 'idle';
+  });
 
   useEffect(() => {
     if (!slot?.mint) {
@@ -48,6 +58,14 @@ export const ChartWidget = ({ slot, index }: { slot: ChartSlot | null; index: nu
       return;
     }
     let mounted = true;
+    // Show this mint's cached candles immediately (covers mint changes too).
+    const cached = candleCache.get(slot.mint);
+    if (cached?.length) {
+      setCandles(cached);
+      setStatus('ok');
+    } else {
+      setCandles([]);
+    }
     const load = async () => {
       setStatus((s) => (s === 'ok' ? 'ok' : 'loading'));
       try {
@@ -57,10 +75,17 @@ export const ChartWidget = ({ slot, index }: { slot: ChartSlot | null; index: nu
         );
         const list = (payload?.candles ?? []).filter((c) => c && c.close > 0);
         if (!mounted) return;
-        setCandles(list);
-        setStatus(list.length >= BB_PERIOD ? 'ok' : list.length ? 'ok' : 'error');
+        if (list.length) {
+          candleCache.set(slot.mint!, list);
+          setCandles(list);
+          setStatus('ok');
+        } else {
+          // No candles returned — keep last-known if we have any.
+          setStatus(candleCache.get(slot.mint!)?.length ? 'ok' : 'error');
+        }
       } catch {
-        if (mounted) setStatus('error');
+        // Transient error — keep showing cached candles.
+        if (mounted) setStatus(candleCache.get(slot.mint!)?.length ? 'ok' : 'error');
       }
     };
     load();

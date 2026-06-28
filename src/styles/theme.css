@@ -1153,3 +1153,20 @@ h3 { font-size: 15px; }
 .chart-svg .fib.key .fib-line { stroke: rgba(255, 196, 84, 0.5); stroke-dasharray: none; }
 .chart-svg .fib-label { fill: rgba(255, 210, 120, 0.85); font-family: var(--font-mono); font-size: 7px; }
 .chart-svg .fib.key .fib-label { fill: rgba(255, 210, 120, 0.9); font-weight: 700; }
+
+/* Solid Dexscreener-style chart cards (override glass translucency) */
+.chart-card {
+  background: #0a0e16;
+  border: 1px solid rgba(120, 140, 180, 0.16);
+  backdrop-filter: none;
+}
+.chart-svg .px-axis .grid-line { stroke: rgba(150, 170, 210, 0.07); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.chart-svg .px-label { fill: var(--dim); font-family: var(--font-mono); font-size: 6.5px; }
+.chart-svg .vol.up { fill: rgba(85, 223, 134, 0.32); }
+.chart-svg .vol.down { fill: rgba(255, 102, 118, 0.32); }
+.chart-svg .last-line { stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.chart-svg .last-line.up { stroke: var(--green); }
+.chart-svg .last-line.down { stroke: var(--red); }
+.chart-svg .last-tag.up { fill: var(--green); }
+.chart-svg .last-tag.down { fill: var(--red); }
+.chart-svg .last-tag-text { fill: #06121b; font-family: var(--font-mono); font-size: 7px; font-weight: 700; }

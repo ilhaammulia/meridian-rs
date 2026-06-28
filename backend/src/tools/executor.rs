@@ -602,10 +602,18 @@ impl ToolExecutor {
                 // major bleed source. On data error we allow the deploy (don't
                 // block trading on a transient indicator-API hiccup).
                 if config.indicators.enabled {
-                    if let Some(base_mint) =
-                        args["base_mint"].as_str().filter(|m| !m.is_empty())
-                    {
-                        match crate::tools::bollinger::entry_percent_b(config, base_mint).await {
+                    // The screener's deploy_position usually only passes
+                    // pool_address (no base_mint), so resolve the base mint from
+                    // the pool when absent — otherwise the gate would silently
+                    // skip and every deploy would be ungated.
+                    let base_mint = match args["base_mint"].as_str().filter(|m| !m.is_empty()) {
+                        Some(m) => Some(m.to_string()),
+                        None => crate::tools::meteora_native::pool_base_mint(config, pool_addr)
+                            .await
+                            .ok(),
+                    };
+                    if let Some(base_mint) = base_mint {
+                        match crate::tools::bollinger::entry_percent_b(config, &base_mint).await {
                             Ok(Some(pb)) => {
                                 if pb < config.indicators.bb_percent_b_min {
                                     anyhow::bail!(

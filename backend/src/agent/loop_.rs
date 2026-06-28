@@ -127,11 +127,11 @@ impl AgentLoop {
                 &format!("Step {}/{}", step + 1, config.llm.max_steps),
             );
 
-            let tool_choice = if step == 0 && is_action_intent(goal) {
-                json!("required")
-            } else {
-                json!("auto")
-            };
+            // Always "auto": some providers (e.g. DeepSeek thinking models) reject
+            // a forced tool_choice ("Thinking mode does not support this
+            // tool_choice", 400). The action goals are explicit enough that the
+            // model still calls the tool under "auto".
+            let tool_choice = json!("auto");
 
             let response = llm
                 .chat_with_tools(

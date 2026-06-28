@@ -14,4 +14,6 @@ if (Test-Path -LiteralPath $LockPath) {
 Start-Process -FilePath 'powershell' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $BackendScript) -WorkingDirectory $Root -RedirectStandardOutput $BackendLog -RedirectStandardError $BackendErr -WindowStyle Hidden
 
 Set-Location -LiteralPath $Root
-npm run dev
+# Run the frontend-only script (NOT `npm run dev`, which now points back to this
+# script and would recurse infinitely).
+npm run dev:web

@@ -19,3 +19,7 @@ backend/user-config.backup.json
 
 # local dev server log
 frontend-dev.log
+
+dev-combined.log
+dev-combined.err.log
+frontend-dev.err.log

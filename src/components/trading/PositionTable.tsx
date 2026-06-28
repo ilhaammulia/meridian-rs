@@ -67,7 +67,7 @@ type PositionRow = {
   age: string;
   markerPct: number | null;
   inRange: boolean;
-  baseIcon: string | null;
+  baseIconSrcs: string[];
   posId: string;
 };
 
@@ -142,11 +142,28 @@ const SOL_ICON = proxiedIcon('https://raw.githubusercontent.com/solana-labs/toke
 const tokenIconUrl = (mint?: string | null) =>
   mint ? `https://dd.dexscreener.com/ds-data/tokens/solana/${mint}.png?size=lg` : null;
 
-// Token logo (Meteora style): a 16px round image that falls back to a colored
-// dot if the mint has no resolvable icon.
-const TokenLogo = ({ src, alt, fallback }: { src: string | null; alt: string; fallback: string }) => {
-  const [errored, setErrored] = useState(false);
-  if (!src || errored) return <i className={`mp-dot ${fallback}`} />;
+const letterFor = (alt?: string | null) =>
+  ((alt ?? '').split(/[-/ ]/)[0] || '?').slice(0, 1).toUpperCase();
+
+// Token logo (Meteora style): a 16px round image. Tries each source in order
+// (provided icon, then DexScreener-by-mint) on load error, then falls back to a
+// lettered avatar so the token is always identifiable instead of a blank dot.
+const TokenLogo = ({ srcs, alt }: { srcs: string[]; alt: string }) => {
+  const [idx, setIdx] = useState(0);
+  const src = srcs[idx];
+  if (!src) {
+    return (
+      <i
+        className="mp-dot"
+        style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 8, fontWeight: 800, color: '#06121b', lineHeight: 1,
+        }}
+      >
+        {letterFor(alt)}
+      </i>
+    );
+  }
   return (
     <img
       src={src}
@@ -154,7 +171,7 @@ const TokenLogo = ({ src, alt, fallback }: { src: string | null; alt: string; fa
       width={16}
       height={16}
       loading="lazy"
-      onError={() => setErrored(true)}
+      onError={() => setIdx((i) => i + 1)}
       style={{ width: 16, height: 16, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
     />
   );
@@ -250,7 +267,10 @@ const mapPosition = (position: BackendPosition, pricing: PricingContext): Positi
     age: formatAge(position.created_at),
     markerPct,
     inRange: position.in_range ?? true,
-    baseIcon: proxiedIcon(position.base_icon ?? tokenIconUrl(mint ?? position.base_mint)),
+    baseIconSrcs: [
+      proxiedIcon(position.base_icon),
+      proxiedIcon(tokenIconUrl(mint ?? position.base_mint)),
+    ].filter(Boolean) as string[],
     posId: position.id ?? '',
   };
 };
@@ -383,13 +403,13 @@ export const PositionTable = () => {
             </div>
             <div className="mp-stack">
               <div className="mp-main">{position.liquidityUsd}</div>
-              <div className="mp-token"><TokenLogo src={position.baseIcon} alt={position.pair} fallback="mp-pair" /><span>{position.liquiditySecondary}</span></div>
-              <div className="mp-token"><TokenLogo src={SOL_ICON} alt="SOL" fallback="mp-sol" /><span>{position.liquidityPrimary}</span></div>
+              <div className="mp-token"><TokenLogo srcs={position.baseIconSrcs} alt={position.pair} /><span>{position.liquiditySecondary}</span></div>
+              <div className="mp-token"><TokenLogo srcs={SOL_ICON ? [SOL_ICON] : []} alt="SOL" /><span>{position.liquidityPrimary}</span></div>
             </div>
             <div className="mp-stack">
               <div className="mp-main mp-fees-main">{position.feesUsd}<em>{position.feesApr}</em></div>
-              <div className="mp-token"><TokenLogo src={position.baseIcon} alt={position.pair} fallback="mp-pair" /><span>{position.feesSecondary}</span></div>
-              <div className="mp-token"><TokenLogo src={SOL_ICON} alt="SOL" fallback="mp-sol" /><span>{position.feesPrimary}</span></div>
+              <div className="mp-token"><TokenLogo srcs={position.baseIconSrcs} alt={position.pair} /><span>{position.feesSecondary}</span></div>
+              <div className="mp-token"><TokenLogo srcs={SOL_ICON ? [SOL_ICON] : []} alt="SOL" /><span>{position.feesPrimary}</span></div>
             </div>
             <div className={position.pnlPositive ? 'mp-pnl mp-up' : 'mp-pnl mp-down'}>
               <div>{position.pnlUsd}</div>

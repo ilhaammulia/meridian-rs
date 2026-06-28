@@ -508,16 +508,26 @@ impl ToolExecutor {
                     );
                 }
 
-                // Duplicate base mint check (if provided)
-                if let Some(base_mint) = args["base_mint"].as_str() {
-                    if !base_mint.is_empty() {
-                        let normalized = normalize_mint(base_mint);
-                        let has_dup = active
-                            .iter()
-                            .any(|p| normalize_mint(&p.base_mint) == normalized);
-                        if has_dup {
-                            anyhow::bail!("already have position with same base token");
-                        }
+                // Duplicate base-token check. The screener usually only passes
+                // pool_address (no base_mint), so resolve the base mint from the
+                // pool when it's absent — otherwise this check silently skips and
+                // the same token gets deployed twice across two different pools.
+                let dup_base_mint = match args["base_mint"].as_str().filter(|m| !m.is_empty()) {
+                    Some(m) => Some(m.to_string()),
+                    None => crate::tools::meteora_native::pool_base_mint(config, pool_addr)
+                        .await
+                        .ok(),
+                };
+                if let Some(base_mint) = dup_base_mint {
+                    let normalized = normalize_mint(&base_mint);
+                    let has_dup = active
+                        .iter()
+                        .any(|p| normalize_mint(&p.base_mint) == normalized);
+                    if has_dup {
+                        anyhow::bail!(
+                            "already have position with same base token {}",
+                            &base_mint[..8.min(base_mint.len())]
+                        );
                     }
                 }
 

@@ -114,7 +114,21 @@ export const ChartWidget = ({ slot, index }: { slot: ChartSlot | null; index: nu
         ? (lastClose - lastBand.lower) / (lastBand.upper - lastBand.lower)
         : null;
 
-    return { last, bands, W, H, x, y, cw, line, pctB, lastClose };
+    // Fibonacci retracement over the visible swing (high → low). 0% at the swing
+    // high, 100% at the swing low; price = high - ratio*(high-low).
+    let pHi = -Infinity;
+    let pLo = Infinity;
+    for (const c of last) {
+      pHi = Math.max(pHi, c.high);
+      pLo = Math.min(pLo, c.low);
+    }
+    const fibRatios = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+    const fib =
+      pHi > pLo
+        ? fibRatios.map((r) => ({ r, price: pHi - r * (pHi - pLo) }))
+        : [];
+
+    return { last, bands, W, H, x, y, cw, line, pctB, lastClose, fib, padX };
   }, [candles]);
 
   const pctB = view?.pctB ?? null;
@@ -155,6 +169,19 @@ export const ChartWidget = ({ slot, index }: { slot: ChartSlot | null; index: nu
           <polyline className="bb-upper" points={view.line('upper')} fill="none" />
           <polyline className="bb-mid" points={view.line('mid')} fill="none" />
           <polyline className="bb-lower" points={view.line('lower')} fill="none" />
+          {/* Fibonacci retracement levels */}
+          {view.fib.map((f) => {
+            const yy = view.y(f.price);
+            const key = f.r === 0 || f.r === 1 || f.r === 0.5;
+            return (
+              <g key={f.r} className={`fib ${key ? 'key' : ''}`}>
+                <line x1={view.padX} x2={view.W - view.padX} y1={yy} y2={yy} className="fib-line" />
+                <text x={view.W - view.padX - 2} y={yy - 1.5} className="fib-label" textAnchor="end">
+                  {f.r.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')}
+                </text>
+              </g>
+            );
+          })}
           {/* Candles */}
           {view.last.map((c, i) => {
             const up = c.close >= c.open;

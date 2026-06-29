@@ -1149,7 +1149,7 @@ h3 { font-size: 15px; }
   .dash-main .positions-tabbed { flex: 1 1 0; display: flex; flex-direction: column; min-height: 0; }
   .positions-tabbed .positions-tab-body { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; }
   .dash-main .candidate-card { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
-  .dash-main .candidate-card .candidate-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+  .dash-main .candidate-card .candidate-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; align-content: start; scrollbar-width: thin; }
 }
 
 /* ── Mobile / phone portrait — stack everything into one scrollable column ── */

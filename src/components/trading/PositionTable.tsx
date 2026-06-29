@@ -436,7 +436,6 @@ export const PositionTable = () => {
           </div>
         )) : <div className="positions-empty">No active backend positions.</div>}
       </div>
-      <div className="fees-line"><span>/api/meridian/positions</span><span>backend live</span></div>
     </GlassCard>
   );
 };

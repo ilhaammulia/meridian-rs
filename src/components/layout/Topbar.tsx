@@ -1,9 +1,18 @@
-import { Music, Volume2, Wifi } from 'lucide-react';
+import { Music, Power, Volume2, Wifi } from 'lucide-react';
 import { Clock } from './Clock';
 
 type TopbarProps = {
   activeWorkspace: number;
   onWorkspaceChange: (workspace: number) => void;
+};
+
+const logout = async () => {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' });
+  } catch {
+    /* ignore — reload re-checks the session and falls back to the lock screen */
+  }
+  window.location.reload();
 };
 
 export const Topbar = ({ activeWorkspace, onWorkspaceChange }: TopbarProps) => (
@@ -24,6 +33,7 @@ export const Topbar = ({ activeWorkspace, onWorkspaceChange }: TopbarProps) => (
       <Volume2 size={16} />
       <Wifi size={16} />
       <Clock type="timeWithPeriod" />
+      <button type="button" className="topbar-logout" aria-label="Log out" title="Log out" onClick={logout}><Power size={15} /></button>
     </div>
   </header>
 );

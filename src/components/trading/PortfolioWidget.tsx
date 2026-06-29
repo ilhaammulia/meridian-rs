@@ -80,10 +80,10 @@ export const PortfolioWidget = () => {
           <span>Total PnL</span>
           <b className={pnlPositive ? 'profit' : 'loss'}>{usd(summary.totalPnlUsd)} <em>{pct(summary.totalPnlPct)}</em></b>
         </div>
-        <div className="ps-stat"><span>All-time Deposit</span><b>{usd(summary.allTimeDepositUsd)}</b></div>
-        <div className="ps-stat"><span>Fees Earned</span><b>{usd(summary.feesClaimedUsd)}</b></div>
+        <div className="ps-stat"><span>Deposit</span><b>{usd(summary.allTimeDepositUsd)}</b></div>
+        <div className="ps-stat"><span>Fees</span><b>{usd(summary.feesClaimedUsd)}</b></div>
         <div className="ps-stat"><span>Win Rate</span><b>{Number(summary.winRate ?? 0).toFixed(1)}%</b></div>
-        <div className="ps-stat"><span>Avg Invested</span><b>{usd(summary.avgInvestedUsd)}</b></div>
+        <div className="ps-stat"><span>Avg Inv</span><b>{usd(summary.avgInvestedUsd)}</b></div>
       </div>
 
       <div className="portfolio-head">
@@ -106,7 +106,6 @@ export const PortfolioWidget = () => {
           );
         }) : <div className="positions-empty">{note}</div>}
       </div>
-      <div className="fees-line"><span>/api/meridian/portfolio</span><span>{note}</span></div>
     </GlassCard>
   );
 };

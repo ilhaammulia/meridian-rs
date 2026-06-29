@@ -65,9 +65,8 @@ export const Sidebar = () => {
   return (
     <GlassCard className="sidebar-card terminal-sidebar">
       <div className="profile">
-        <div className="avatar"><img src="/profile-avatar.png" alt="0xRapzz avatar" /></div>
-        <h1>0xRapzz</h1>
-        <p>DLMM_AGENT</p>
+        <div className="avatar"><img src="/profile-avatar.png" alt="OxRapzz avatar" /></div>
+        <h1>OxRapzz</h1>
       </div>
 
       <div className="stat-grid">

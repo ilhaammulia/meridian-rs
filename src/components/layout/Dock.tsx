@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Briefcase, Code2, Monitor, Power, SquareAsterisk, Zap, type LucideIcon } from 'lucide-react';
+import { Briefcase, Code2, Monitor, SquareAsterisk, Zap, type LucideIcon } from 'lucide-react';
 import { Clock } from './Clock';
 import { cachedJson } from '../../lib/clientCache';
 
@@ -61,7 +61,6 @@ export const Dock = ({ activeApp, onOpenApp }: DockProps) => {
       <span>RAM <strong>{stats.ramUsed} / {stats.ramTotal}</strong></span>
       <span className="tiny-bar" />
       <div className="dock-clock"><Clock type="time" /><Clock type="numericDate" /></div>
-      <button type="button" className="power-button" aria-label="Power"><Power size={17} /></button>
     </div>
   </footer>
   );

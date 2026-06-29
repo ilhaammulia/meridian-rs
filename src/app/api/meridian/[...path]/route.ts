@@ -12,6 +12,20 @@ const proxy = async (request: NextRequest, context: RouteContext) => {
   const backendUrl = new URL(`/api/${path.join('/')}${url.search}`, backendBaseUrl);
   const body = request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.text();
 
+  // Lock down manual control. Now that the dashboard is publicly reachable, the
+  // only control actions allowed through it are position management on EXISTING
+  // positions (claim fees / close). Capital-moving actions (deploy, screen,
+  // manage, swap) are bot-autonomous only and must never be triggerable from the
+  // UI/API. The Rust bot runs its own loop and does not go through this proxy.
+  if (request.method === 'POST' && path.join('/') === 'control') {
+    let action = '';
+    try { action = String(JSON.parse(body || '{}').action ?? ''); } catch { /* invalid body → blocked below */ }
+    const allowed = new Set(['claim_fees', 'close_position']);
+    if (!allowed.has(action)) {
+      return NextResponse.json({ success: false, error: `control action '${action}' is not permitted` }, { status: 403 });
+    }
+  }
+
   try {
     const response = await fetch(backendUrl, {
       method: request.method,

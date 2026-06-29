@@ -92,8 +92,8 @@ export const LockScreen = ({ onAuthed }: { onAuthed: (pubkey: string) => void })
     <div className="lock-screen">
       <div className="lock-clock"><Clock type="time" /><span><Clock type="date" /></span></div>
       <div className="lock-card">
-        <div className="lock-avatar"><img src="/profile-avatar.png" alt="0xRapzz" /></div>
-        <h1>0xRapzz</h1>
+        <div className="lock-avatar"><img src="/profile-avatar.png" alt="OxRapzz" /></div>
+        <h1>OxRapzz</h1>
         <p className="lock-sub">Meridian DLMM Agent</p>
 
         <form

@@ -75,7 +75,7 @@ const TokenLogo = ({ srcs, symbol, name }: { srcs: string[]; symbol?: string | n
   );
 };
 
-export const CandidateWidget = () => {
+export const CandidateWidget = ({ className = '' }: { className?: string } = {}) => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [filteredReason, setFilteredReason] = useState('Loading candidates...');
 
@@ -109,7 +109,7 @@ export const CandidateWidget = () => {
   }, []);
 
   return (
-    <GlassCard className="candidate-card terminal-candidates">
+    <GlassCard className={`candidate-card terminal-candidates ${className}`.trim()}>
       <div className="terminal-title"><Radar size={18} />CANDIDATE RADAR</div>
       <div className="terminal-divider" />
       <div className="candidate-head"><span>PAIR</span><span>SCORE</span><span>TVL</span><span>FEES</span></div>
@@ -129,7 +129,6 @@ export const CandidateWidget = () => {
           </div>
         )) : <div className="candidate-empty">{filteredReason}</div>}
       </div>
-      <div className="candidate-footer"><span>/api/meridian/candidates</span><span>{filteredReason}</span></div>
     </GlassCard>
   );
 };

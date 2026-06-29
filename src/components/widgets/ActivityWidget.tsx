@@ -143,7 +143,7 @@ const mapDecision = (decision: Decision): LogEntry => {
   };
 };
 
-export const ActivityWidget = () => {
+export const ActivityWidget = ({ className = '' }: { className?: string } = {}) => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
   useEffect(() => {
@@ -178,7 +178,7 @@ export const ActivityWidget = () => {
   }, []);
 
   return (
-    <GlassCard className="activity-card terminal-activity">
+    <GlassCard className={`activity-card terminal-activity ${className}`.trim()}>
       <div className="terminal-title"><ChartNoAxesColumnIncreasing size={18} />ACTIVITY LOG</div>
       <div className="terminal-divider" />
       <div className="activity-head"><span>TIME</span><span>EVENT</span><span>PAIR</span><span>MESSAGE</span></div>
@@ -200,7 +200,6 @@ export const ActivityWidget = () => {
           </div>
         )) : <div className="activity-empty">No backend decisions yet.</div>}
       </div>
-      <div className="activity-footer"><span>/api/meridian/decisions</span><span>{logs.length} entries</span></div>
     </GlassCard>
   );
 };

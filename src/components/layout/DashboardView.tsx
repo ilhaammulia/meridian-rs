@@ -15,21 +15,24 @@ import {
 } from 'lucide-react';
 import { PositionTable } from '../trading/PositionTable';
 import { PortfolioWidget } from '../trading/PortfolioWidget';
+import { PositionsCard } from '../trading/PositionsCard';
 import { WeatherWidget } from '../widgets/WeatherWidget';
 import { MusicWidget } from '../widgets/MusicWidget';
 import { ActivityWidget } from '../widgets/ActivityWidget';
 import { CandidateWidget } from '../widgets/CandidateWidget';
-import { BackendControlsWidget, BackendStatusWidget } from '../widgets/BackendControlWidgets';
+import { BackendStatusWidget } from '../widgets/BackendControlWidgets';
 import { cachedJson } from '../../lib/clientCache';
 
 type ViewId = 'overview' | 'positions' | 'activity' | 'portfolio' | 'candidates' | 'settings';
 
+// Order mirrors the overview layout top-to-bottom (Portfolio/History →
+// Positions → Candidates), then the remaining views.
 const NAV: Array<{ id: ViewId; label: string; icon: LucideIcon }> = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'positions', label: 'Positions', icon: Layers },
-  { id: 'activity', label: 'Activity Log', icon: Activity },
   { id: 'portfolio', label: 'Portfolio', icon: Wallet },
+  { id: 'positions', label: 'Positions', icon: Layers },
   { id: 'candidates', label: 'Candidates', icon: Radar },
+  { id: 'activity', label: 'Activity Log', icon: Activity },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -79,9 +82,8 @@ const ProfileNav = ({ view, setView }: { view: ViewId; setView: (v: ViewId) => v
   return (
     <aside className="dash-sidebar">
       <div className="dash-profile">
-        <div className="dash-avatar"><img src="/profile-avatar.png" alt="0xRapzz" /></div>
-        <h1>0xRapzz</h1>
-        <p>DLMM_AGENT</p>
+        <div className="dash-avatar"><img src="/profile-avatar.png" alt="OxRapzz" /></div>
+        <h1>OxRapzz</h1>
       </div>
       <div className="dash-stats">
         {stats.map((s) => (
@@ -112,22 +114,22 @@ export const DashboardView = () => {
   const [view, setView] = useState<ViewId>('overview');
 
   return (
-    <div className="dash-shell">
+    <div className="dash-shell" data-view={view}>
       <ProfileNav view={view} setView={setView} />
 
       <section className="dash-main">
-        {view === 'overview' && (<><PositionTable /><PortfolioWidget /></>)}
+        {view === 'overview' && (<><PositionsCard /><CandidateWidget /><ActivityWidget className="activity-mobile-only" /></>)}
         {view === 'positions' && <PositionTable />}
         {view === 'activity' && <ActivityWidget />}
         {view === 'portfolio' && <PortfolioWidget />}
         {view === 'candidates' && <CandidateWidget />}
-        {view === 'settings' && (<><BackendStatusWidget /><BackendControlsWidget /></>)}
+        {view === 'settings' && <BackendStatusWidget />}
       </section>
 
       <aside className="dash-rail">
         <WeatherWidget />
         <MusicWidget />
-        <CandidateWidget />
+        <ActivityWidget className="activity-desktop-only" />
       </aside>
     </div>
   );

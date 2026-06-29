@@ -12,11 +12,13 @@
     "start": "next start"
   },
   "dependencies": {
+    "bs58": "^6.0.0",
     "framer-motion": "^12.0.0",
     "lucide-react": "^0.500.0",
     "next": "^16.2.7",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "tweetnacl": "^1.0.3",
     "zustand": "^5.0.0"
   },
   "devDependencies": {

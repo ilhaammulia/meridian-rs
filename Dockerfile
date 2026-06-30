@@ -40,15 +40,13 @@ RUN echo "Starting Rust build..." && \
     echo "Binary ready at /build/meridian-rs"
 
 # === Stage 3: Runtime ===
-FROM alpine:3.20
+FROM debian:bookworm-slim
 
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     bash \
-    libc6-compat \
-    libssl3 \
-    libstdc++
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

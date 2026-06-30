@@ -18,20 +18,12 @@ RUN if [ "$WEB_ENABLED" = "true" ]; then \
     ; fi
 
 # === Stage 2: Rust builder ===
-FROM rust:1.82-alpine AS rust-builder
+FROM rust:1.82 AS rust-builder
 
 ARG CORE_BRANCH=master
 ARG WEB_ENABLED=false
 
 WORKDIR /build
-
-# Install dependencies
-RUN apk add --no-cache \
-    git \
-    build-base \
-    pkg-config \
-    openssl-dev \
-    musl-dev
 
 # Clone core backend
 RUN git clone --depth 1 --branch $CORE_BRANCH --single-branch \

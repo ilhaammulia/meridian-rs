@@ -6,6 +6,7 @@
 FROM node:22-alpine AS web-builder
 ARG WEB_ENABLED=false
 ARG WEB_BRANCH=web-ui
+ARG GIT_REPO_URL=https://github.com/ilhaammulia/meridian-rs.git
 
 WORKDIR /build
 
@@ -13,7 +14,7 @@ WORKDIR /build
 RUN if [ "$WEB_ENABLED" = "true" ]; then \
     apk add --no-cache git && \
     git clone --depth 1 --branch $WEB_BRANCH --single-branch \
-    https://github.com/FlipZ3ro/meridian-rs.git . && \
+    $GIT_REPO_URL . && \
     if [ -f package.json ]; then npm ci && npm run build; fi \
     ; fi
 
@@ -22,16 +23,13 @@ FROM rust:1.82 AS rust-builder
 
 ARG CORE_BRANCH=master
 ARG WEB_ENABLED=false
+ARG GIT_REPO_URL=https://github.com/ilhaammulia/meridian-rs.git
 
 WORKDIR /build
 
 # Clone core backend
 RUN git clone --depth 1 --branch $CORE_BRANCH --single-branch \
-    https://github.com/FlipZ3ro/meridian-rs.git .
-
-# Copy web UI assets if built
-COPY --from=web-builder /build/.next /build/web-dist/.next 2>/dev/null || true
-COPY --from=web-builder /build/public /build/web-dist/public 2>/dev/null || true
+    $GIT_REPO_URL .
 
 # Build Rust binary
 RUN cargo build --release 2>&1 && \

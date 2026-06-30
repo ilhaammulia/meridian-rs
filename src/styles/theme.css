@@ -1183,12 +1183,14 @@ h3 { font-size: 15px; }
 .activity-mobile-only { display: none !important; }
 
 @media (min-width: 761px) {
-  /* Split the main column ~50/50 between the positions card and the candidate
-     radar, so the radar's height/bottom roughly lines up with the activity log
-     in the right rail (instead of the radar ballooning to fill the column). */
-  .dash-main .positions-tabbed { flex: 1 1 0; display: flex; flex-direction: column; min-height: 0; }
+  /* Size the positions card to fit ~4 open positions (≈ weather + now-playing
+     height), then let the candidate radar fill the rest of the column. This
+     removes the empty space under the Open positions and lines the radar's
+     top/bottom up with the activity log in the right rail — clean two-column
+     alignment. Closed tab scrolls inside the same fixed box. */
+  .dash-main .positions-tabbed { flex: 0 0 auto; height: 550px; display: flex; flex-direction: column; min-height: 0; }
   .positions-tabbed .positions-tab-body { flex: 1; min-height: 0; overflow: hidden; }
-  .dash-main .candidate-card { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  .dash-main .candidate-card { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
   .dash-main .candidate-card .candidate-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; align-content: start; scrollbar-width: thin; }
 }
 

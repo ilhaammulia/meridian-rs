@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  meridian-core:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CORE_BRANCH: master
+        WEB_ENABLED: false
+        WEB_BRANCH: web-ui
+    image: meridian:core
+    container_name: meridian-rs-core
+    restart: unless-stopped
+    ports:
+      # Web UI
+      - "3000:3000"
+      # Health check / status endpoint
+      - "8080:8080"
+    environment:
+      # Required - wallet and RPC config
+      WALLET_PRIVATE_KEY: ${WALLET_PRIVATE_KEY}
+      MERIDIAN_WALLET: ${MERIDIAN_WALLET}
+      RPC_URL: ${RPC_URL:-https://api.mainnet-beta.solana.com}
+
+      # LLM configuration
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://openrouter.io/api/v1}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-4o-mini}
+
+      # Runtime options
+      DRY_RUN: ${DRY_RUN:-true}
+      MERIDIAN_DATA_DIR: /data
+      MERIDIAN_LOG_STYLE: ${MERIDIAN_LOG_STYLE:-pretty}
+      MERIDIAN_WEB_ADDR: 0.0.0.0:3000
+      HEALTH_PORT: 8080
+    volumes:
+      # Persist state across restarts
+      - meridian-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - meridian
+
+  meridian-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CORE_BRANCH: master
+        WEB_ENABLED: true
+        WEB_BRANCH: web-ui
+    image: meridian:web
+    container_name: meridian-rs-web
+    restart: unless-stopped
+    ports:
+      # Web UI
+      - "3001:3000"
+      # Health check / status endpoint
+      - "8081:8080"
+    environment:
+      # Required - wallet and RPC config
+      WALLET_PRIVATE_KEY: ${WALLET_PRIVATE_KEY}
+      MERIDIAN_WALLET: ${MERIDIAN_WALLET}
+      RPC_URL: ${RPC_URL:-https://api.mainnet-beta.solana.com}
+
+      # LLM configuration
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://openrouter.io/api/v1}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-4o-mini}
+
+      # Runtime options
+      DRY_RUN: ${DRY_RUN:-true}
+      MERIDIAN_DATA_DIR: /data
+      MERIDIAN_LOG_STYLE: ${MERIDIAN_LOG_STYLE:-pretty}
+      MERIDIAN_WEB_ADDR: 0.0.0.0:3000
+      HEALTH_PORT: 8080
+    volumes:
+      # Persist state across restarts
+      - meridian-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - meridian
+
+volumes:
+  meridian-data:
+    driver: local
+
+networks:
+  meridian:
+    driver: bridge

@@ -1,0 +1,105 @@
+# Komodo native compose configuration for Meridian RS
+# Usage: komodo up -f komodo-compose.yml
+#
+# Alternatively, can be used with docker-compose:
+# docker-compose -f komodo-compose.yml up -d
+
+version: '3'
+
+services:
+  meridian:
+    # Build from source - requires build.sh setup
+    # OR pull pre-built: image: meridian:web
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CORE_BRANCH: master
+        WEB_ENABLED: true
+        WEB_BRANCH: web-ui
+
+    image: meridian:homelab
+    container_name: meridian-agent
+    restart: unless-stopped
+
+    # Networking
+    ports:
+      - "3000:3000/tcp"   # Web UI (internal + external if router configured)
+      - "8080:8080/tcp"   # Health endpoint (internal)
+
+    # Data persistence
+    volumes:
+      - meridian-state:/data
+      - /etc/timezone:/etc/timezone:ro          # Sync host timezone
+      - /etc/localtime:/etc/localtime:ro        # Sync host time
+
+    # Security and environment
+    environment:
+      # === REQUIRED: Fill these in ===
+      # Solana wallet keypair (base58-encoded)
+      WALLET_PRIVATE_KEY: ${WALLET_PRIVATE_KEY:?error}
+      # Wallet public address
+      MERIDIAN_WALLET: ${MERIDIAN_WALLET:?error}
+
+      # === REQUIRED: RPC and LLM ===
+      # Solana RPC endpoint (can use free public or Helius/Quicknode)
+      RPC_URL: ${RPC_URL:-https://api.mainnet-beta.solana.com}
+      # OpenRouter API key for agent reasoning
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?error}
+
+      # === OPTIONAL: LLM model selection ===
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://openrouter.io/api/v1}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-4o-mini}
+      MANAGEMENT_MODEL: ${MANAGEMENT_MODEL:-openai/gpt-4o-mini}
+      SCREENING_MODEL: ${SCREENING_MODEL:-openai/gpt-4o-mini}
+
+      # === OPERATIONAL ===
+      # ALWAYS start with true, only set false after testing
+      DRY_RUN: ${DRY_RUN:-true}
+
+      # Data and state directories (use /data in container)
+      MERIDIAN_DATA_DIR: /data
+      MERIDIAN_LOG_STYLE: ${MERIDIAN_LOG_STYLE:-pretty}
+
+      # Web interface
+      MERIDIAN_WEB_ADDR: 0.0.0.0:3000
+      HEALTH_PORT: 8080
+
+      # === OPTIONAL: Advanced Options ===
+      # For debugging
+      RUST_LOG: ${RUST_LOG:-info}
+
+    # Health monitoring
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    # Resource limits (adjust for your homelab)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 2G
+    #     reservations:
+    #       cpus: '1'
+    #       memory: 1G
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Named volume for persistent state
+volumes:
+  meridian-state:
+    driver: local
+    driver_opts:
+      # Optional: bind mount to specific path for network storage
+      # type: nfs
+      # o: addr=192.168.1.100,vers=4,soft
+      # device: ":/export/meridian"

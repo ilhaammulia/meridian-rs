@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Rust
+target
+Cargo.lock
+*.rlib
+*.rmeta
+
+# Node/Web UI
+node_modules
+.next
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+dist
+build
+
+# Config (don't include secrets)
+.env
+.env.local
+.env.*.local
+user-config.json
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.circleci
+
+# Documentation
+docs
+README.md
+LICENSE
+
+# Other
+*.tmp
+.cache

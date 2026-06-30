@@ -32,8 +32,12 @@ RUN git clone --depth 1 --branch $CORE_BRANCH --single-branch \
     $GIT_REPO_URL .
 
 # Build Rust binary
-RUN cargo build --release 2>&1 && \
-    mv /build/target/release/meridian-rs /build/meridian-rs
+RUN echo "Starting Rust build..." && \
+    cargo build --release && \
+    echo "Build complete, checking binary..." && \
+    ls -lh /build/target/release/meridian-rs && \
+    cp /build/target/release/meridian-rs /build/meridian-rs && \
+    echo "Binary ready at /build/meridian-rs"
 
 # === Stage 3: Runtime ===
 FROM alpine:3.20
@@ -42,7 +46,9 @@ RUN apk add --no-cache \
     ca-certificates \
     curl \
     bash \
-    libssl3
+    libc6-compat \
+    libssl3 \
+    libstdc++
 
 WORKDIR /app
 

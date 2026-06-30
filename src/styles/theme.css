@@ -1255,6 +1255,10 @@ h3 { font-size: 15px; }
   .activity-mobile-only { display: block !important; }
   .activity-desktop-only { display: none !important; }
 
+  /* Cap the activity log height on mobile so its 30 rows don't run the page
+     long — scroll the list inside a fixed box instead (header stays pinned). */
+  .terminal-activity .log-list { max-height: 46vh; overflow-y: auto; flex: 0 1 auto; }
+
   /* Compact the weather widget — the 860px rule stacks it tall; keep it short
      and horizontal here. */
   .weather-main { grid-template-columns: 38px 1fr auto; gap: 10px; padding: 8px 2px 10px; }

@@ -55,6 +55,11 @@
     "agentMeridianKey": null,
     "lpAgentRelayEnabled": false
   },
+  "strategy": {
+    "minBinsBelow": 35,
+    "maxBinsBelow": 70,
+    "minSafeBinsBelow": 35
+  },
   "dualStrategy": {
     "enabled": false,
     "primaryPct": 0.6,

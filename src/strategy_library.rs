@@ -106,7 +106,7 @@ pub struct RemovedStrategyResult {
 impl Default for StrategyLibraryStore {
     fn default() -> Self {
         let mut store = Self {
-            active: Some("custom_ratio_spot".to_string()),
+            active: Some("sol_bid_wide".to_string()),
             strategies: BTreeMap::new(),
         };
         store.ensure_default_strategies();
@@ -271,7 +271,7 @@ impl StrategyLibraryStore {
             }
         }
         if self.active.is_none() {
-            self.active = Some("custom_ratio_spot".to_string());
+            self.active = Some("sol_bid_wide".to_string());
             changed = true;
         }
         changed
@@ -330,6 +330,32 @@ pub fn active_strategy_prompt_summary() -> Result<Option<String>> {
 
 fn default_strategy_entries(now: &str) -> Vec<StrategyEntry> {
     vec![
+        StrategyEntry {
+            id: "sol_bid_wide".to_string(),
+            name: "Single-Sided SOL Bid (Wide Range)".to_string(),
+            author: "meridian".to_string(),
+            lp_strategy: "bid_ask".to_string(),
+            token_criteria: json!({"notes": "Any token passing screening. Prefer active volume with bin_step 80-125."}),
+            entry: json!({
+                "condition": "Deploy SOL only (amount_y), bins_below only, bins_above=0",
+                "single_side": "sol",
+                "notes": "SOL sits in bins below active price. As token price drops into your range, SOL swaps for token — passive DCA-in. Wide range (35-70 bins) keeps position in range through most volatility without redeployment. Lower fee density than tight range, but far less management and OOR stress for new LPers."
+            }),
+            range: json!({
+                "type": "wide",
+                "bins_below": "35-70 (scaled by volatility via config minBinsBelow/maxBinsBelow)",
+                "bins_above": 0,
+                "notes": "Wide range flag activates at >69 total bins (Meteora behavior). Covers 35-70 bin_step% price drop below entry. E.g. bin_step=100 → 70% downside covered at max bins."
+            }),
+            exit: json!({
+                "take_profit_pct": 15,
+                "notes": "Close when OOR > outOfRangeWaitMinutes or take-profit hit. Wide range means OOR events are rare — when they happen the token has moved significantly. Re-deploy at new price if still interested."
+            }),
+            best_for: "Newbie-friendly passive SOL bidding. Set and (mostly) forget. Wide range stays in play through volatile meme-coin swings.".to_string(),
+            raw: String::new(),
+            added_at: now.to_string(),
+            updated_at: now.to_string(),
+        },
         StrategyEntry {
             id: "custom_ratio_spot".to_string(),
             name: "Custom Ratio Spot".to_string(),
@@ -492,12 +518,16 @@ mod tests {
         let list = store.list_strategies();
         std::fs::remove_file(&path).ok();
 
-        assert_eq!(store.active.as_deref(), Some("custom_ratio_spot"));
-        assert_eq!(list.count, 5);
+        assert_eq!(store.active.as_deref(), Some("sol_bid_wide"));
+        assert_eq!(list.count, 6);
         assert!(list
             .strategies
             .iter()
-            .any(|strategy| strategy.id == "custom_ratio_spot" && strategy.active));
+            .any(|strategy| strategy.id == "sol_bid_wide" && strategy.active));
+        assert!(list
+            .strategies
+            .iter()
+            .any(|strategy| strategy.id == "custom_ratio_spot" && !strategy.active));
         assert!(list
             .strategies
             .iter()
@@ -545,7 +575,7 @@ mod tests {
         std::fs::remove_file(&path).ok();
 
         assert_eq!(removed.id, "panda_strat");
-        assert_eq!(removed.new_active.as_deref(), Some("custom_ratio_spot"));
+        assert_eq!(removed.new_active.as_deref(), Some("custom_ratio_spot")); // fallback to next alphabetically
     }
 
     #[test]
@@ -556,7 +586,7 @@ mod tests {
             .expect("default active strategy");
         let summary = active.prompt_summary();
 
-        assert!(summary.contains("STRATEGY CONTEXT: Custom Ratio Spot"));
+        assert!(summary.contains("STRATEGY CONTEXT: Single-Sided SOL Bid (Wide Range)"));
         assert!(summary.contains("entry:"));
         assert!(summary.contains("exit:"));
         assert!(summary.contains("best for:"));

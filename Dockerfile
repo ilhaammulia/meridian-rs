@@ -19,7 +19,7 @@ RUN if [ "$WEB_ENABLED" = "true" ]; then \
     ; fi
 
 # === Stage 2: Rust builder ===
-FROM rust:1.82 AS rust-builder
+FROM rust:latest AS rust-builder
 
 ARG CORE_BRANCH=master
 ARG WEB_ENABLED=false

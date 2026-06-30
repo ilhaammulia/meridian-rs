@@ -200,6 +200,17 @@ pub struct RiskConfig {
     pub cooldown_loss_pct: f64,
     #[serde(default = "default_cooldown_duration")]
     pub cooldown_duration_min: u32,
+    /// Safety exit: once a position's max drawdown hits the trigger, lower its
+    /// take-profit to the (smaller) safety level so a minor rebound banks it.
+    #[serde(default = "default_safety_exit_enabled")]
+    pub safety_exit_enabled: bool,
+    #[serde(default = "default_safety_exit_trigger")]
+    pub safety_exit_trigger_pct: f64,
+    #[serde(default = "default_safety_exit_tp")]
+    pub safety_exit_tp_pct: f64,
+    /// Suppress all exits for positions younger than this (initial-noise guard).
+    #[serde(default = "default_min_position_duration")]
+    pub min_position_duration_min: u32,
 }
 
 fn default_cooldown_loss() -> f64 {
@@ -207,6 +218,18 @@ fn default_cooldown_loss() -> f64 {
 }
 fn default_cooldown_duration() -> u32 {
     60
+}
+fn default_safety_exit_enabled() -> bool {
+    true
+}
+fn default_safety_exit_trigger() -> f64 {
+    -8.0
+}
+fn default_safety_exit_tp() -> f64 {
+    0.0
+}
+fn default_min_position_duration() -> u32 {
+    5
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -623,6 +646,10 @@ impl Default for Config {
                 stop_loss_pct: None,
                 cooldown_loss_pct: -5.0,
                 cooldown_duration_min: 60,
+                safety_exit_enabled: default_safety_exit_enabled(),
+                safety_exit_trigger_pct: default_safety_exit_trigger(),
+                safety_exit_tp_pct: default_safety_exit_tp(),
+                min_position_duration_min: default_min_position_duration(),
             },
             schedule: ScheduleConfig {
                 management_interval_min: 10,

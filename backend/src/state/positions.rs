@@ -38,6 +38,9 @@ pub enum PositionStatus {
 pub struct TrailingState {
     /// Highest confirmed peak PnL percentage
     pub peak_pnl_pct: Option<f64>,
+    /// Lowest (worst) PnL percentage ever seen — drives the safety-exit gate.
+    #[serde(default)]
+    pub max_drawdown_pct: Option<f64>,
     /// Whether trailing TP mode is active (peak has exceeded trigger threshold)
     pub trailing_active: bool,
     /// Pending peak confirmation being resolved (15s recheck)
@@ -66,6 +69,7 @@ pub struct PendingConfirmation {
 pub enum CloseRule {
     StopLoss,
     TakeProfit,
+    SafetyExit,
     PumpedAboveRange,
     OutOfRange,
     LowYield,
@@ -680,6 +684,13 @@ pub fn get_deterministic_close_rule(
         }
     }
 
+    // ── MIN-DURATION GATE ────────────────────────────────────────
+    // Suppress all exits for brand-new positions to avoid premature closes
+    // from initial price noise (swaps settling right after deploy).
+    if position_age_minutes(pos) < config.risk.min_position_duration_min {
+        return None;
+    }
+
     // ── Rule 1: Stop Loss ────────────────────────────────────────
     if let Some(sl_pct) = config.risk.stop_loss_pct {
         if pnl_pct <= sl_pct {
@@ -691,6 +702,20 @@ pub fn get_deterministic_close_rule(
     if let Some(tp_pct) = config.management.take_profit_pct {
         if pnl_pct >= tp_pct {
             return Some(CloseRule::TakeProfit);
+        }
+    }
+
+    // ── Rule 2b: Safety Exit ─────────────────────────────────────
+    // Once a position's max drawdown has hit the danger zone, it tends to only
+    // slow-bleed or rug — big rebounds are rare. So lower its take-profit to the
+    // safety level (e.g. breakeven): bank the bounce instead of waiting for the
+    // full TP that usually never comes. Conservative; fits the spot strategy.
+    if config.risk.safety_exit_enabled {
+        let max_dd = pos.trailing.max_drawdown_pct.unwrap_or(0.0);
+        if max_dd <= config.risk.safety_exit_trigger_pct
+            && pnl_pct >= config.risk.safety_exit_tp_pct
+        {
+            return Some(CloseRule::SafetyExit);
         }
     }
 
@@ -736,6 +761,13 @@ pub fn update_trailing_state(
     trailing_trigger_pct: f64,
     trailing_drop_pct: f64,
 ) {
+    // Track worst PnL ever seen (for the safety-exit gate).
+    pos.trailing.max_drawdown_pct = Some(
+        pos.trailing
+            .max_drawdown_pct
+            .map_or(current_pnl_pct, |m| m.min(current_pnl_pct)),
+    );
+
     // Activate trailing TP once confirmed peak exceeds trigger
     if !pos.trailing.trailing_active {
         let peak = pos.trailing.peak_pnl_pct.unwrap_or(0.0);
@@ -1038,6 +1070,10 @@ mod tests {
                 stop_loss_pct: Some(-15.0),
                 cooldown_loss_pct: -5.0,
                 cooldown_duration_min: 60,
+                safety_exit_enabled: false,
+                safety_exit_trigger_pct: -8.0,
+                safety_exit_tp_pct: 0.0,
+                min_position_duration_min: 0,
             },
             ..Config::default()
         }

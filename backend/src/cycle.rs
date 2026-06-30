@@ -269,6 +269,7 @@ pub async fn run_management_cycle(
                     let (rule_num, reason) = match rule {
                         CloseRule::StopLoss => (1u8, "stop loss"),
                         CloseRule::TakeProfit => (2, "take profit"),
+                        CloseRule::SafetyExit => (2, "safety exit (breakeven after drawdown)"),
                         CloseRule::PumpedAboveRange => (3, "pumped far above range"),
                         CloseRule::OutOfRange => (4, "OOR"),
                         CloseRule::LowYield => (5, "low yield"),
@@ -483,6 +484,7 @@ pub async fn run_pnl_poll(
                     let reason = match rule {
                         CloseRule::StopLoss => "stop loss",
                         CloseRule::TakeProfit => "take profit",
+                        CloseRule::SafetyExit => "safety exit (breakeven after drawdown)",
                         CloseRule::PumpedAboveRange => "pumped far above range",
                         CloseRule::OutOfRange => "OOR",
                         CloseRule::LowYield => "low yield",
